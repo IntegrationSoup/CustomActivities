@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ValidateTransformer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+553f8686ff6652362ae524e9628421ecca226df8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+67718b0f1405fd39f4f6c5e97f432142e16829ac")]
 [assembly: System.Reflection.AssemblyProductAttribute("ValidateTransformer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ValidateTransformer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

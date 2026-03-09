@@ -12,8 +12,7 @@ C:\Users\jason\source\Workspaces\testxxx\HL7SoupDatabaseActivities\ValidateTrans
 C:\Users\jason\source\Workspaces\testxxx\HL7SoupDatabaseActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.csproj.CopyComplete
 C:\Users\jason\source\Workspaces\testxxx\HL7SoupDatabaseActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.dll
 C:\Users\jason\source\Workspaces\testxxx\HL7SoupDatabaseActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.pdb
-C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.dll
-C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.pdb
+C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\bin\Debug\netstandard2.0\DeployCustomLibraries.ps1
 C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\bin\Debug\netstandard2.0\ValidateTransformer.deps.json
 C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\bin\Debug\netstandard2.0\ValidateTransformer.dll
 C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\bin\Debug\netstandard2.0\ValidateTransformer.pdb
@@ -27,3 +26,5 @@ C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netst
 C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.csproj.CoreCompileInputs.cache
 C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.sourcelink.json
 C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netstandard2.0\Validate.798195D9.Up2Date
+C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.dll
+C:\Users\jason\source\repos\CustomActivities\ValidateTransformer\obj\Debug\netstandard2.0\ValidateTransformer.pdb
