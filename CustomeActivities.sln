@@ -1,0 +1,52 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34525.116
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HL7SoupDatabaseActivities", "HL7SoupDatabaseActivities\HL7SoupDatabaseActivities.csproj", "{6E6B1589-2A81-4332-AA2B-250FC32C66EA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ValidateTransformer", "ValidateTransformer\ValidateTransformer.csproj", "{9B4222AE-2895-45B0-88CE-2299BF2ABF79}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HtmlToPdfActivities", "HtmlToPdfActivities\HtmlToPdfActivities.csproj", "{0F8088CF-70A2-4D7E-B442-B4135E8633A6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HL7SoupIntegrations", "..\HL7Soup\HL7Parser\HL7SoupIntegrations\HL7SoupIntegrations.csproj", "{6F70DE07-CDAA-43E8-9525-DB90CEC372D4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Azure|Any CPU = Azure|Any CPU
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6E6B1589-2A81-4332-AA2B-250FC32C66EA}.Azure|Any CPU.ActiveCfg = Release|Any CPU
+		{6E6B1589-2A81-4332-AA2B-250FC32C66EA}.Azure|Any CPU.Build.0 = Release|Any CPU
+		{6E6B1589-2A81-4332-AA2B-250FC32C66EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E6B1589-2A81-4332-AA2B-250FC32C66EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E6B1589-2A81-4332-AA2B-250FC32C66EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E6B1589-2A81-4332-AA2B-250FC32C66EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B4222AE-2895-45B0-88CE-2299BF2ABF79}.Azure|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B4222AE-2895-45B0-88CE-2299BF2ABF79}.Azure|Any CPU.Build.0 = Debug|Any CPU
+		{9B4222AE-2895-45B0-88CE-2299BF2ABF79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B4222AE-2895-45B0-88CE-2299BF2ABF79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B4222AE-2895-45B0-88CE-2299BF2ABF79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B4222AE-2895-45B0-88CE-2299BF2ABF79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F8088CF-70A2-4D7E-B442-B4135E8633A6}.Azure|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F8088CF-70A2-4D7E-B442-B4135E8633A6}.Azure|Any CPU.Build.0 = Debug|Any CPU
+		{0F8088CF-70A2-4D7E-B442-B4135E8633A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F8088CF-70A2-4D7E-B442-B4135E8633A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F8088CF-70A2-4D7E-B442-B4135E8633A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F8088CF-70A2-4D7E-B442-B4135E8633A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F70DE07-CDAA-43E8-9525-DB90CEC372D4}.Azure|Any CPU.ActiveCfg = Azure|Any CPU
+		{6F70DE07-CDAA-43E8-9525-DB90CEC372D4}.Azure|Any CPU.Build.0 = Azure|Any CPU
+		{6F70DE07-CDAA-43E8-9525-DB90CEC372D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F70DE07-CDAA-43E8-9525-DB90CEC372D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F70DE07-CDAA-43E8-9525-DB90CEC372D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F70DE07-CDAA-43E8-9525-DB90CEC372D4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {81BA12AB-4C68-43AC-8FA7-F361C0C524EB}
+	EndGlobalSection
+EndGlobal
