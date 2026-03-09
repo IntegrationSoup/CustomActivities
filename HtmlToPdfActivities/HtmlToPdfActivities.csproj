@@ -20,4 +20,11 @@
     </None>
   </ItemGroup>
 
+  <Target Name="RemoveNet48SatelliteFolders" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(TargetFramework)' == 'net48' and '$(IsCrossTargetingBuild)' != 'true'">
+    <ItemGroup>
+      <Net48SatelliteDirs Include="$(TargetDir)cs;$(TargetDir)de;$(TargetDir)es;$(TargetDir)fr;$(TargetDir)it;$(TargetDir)ja;$(TargetDir)ko;$(TargetDir)pl;$(TargetDir)pt-BR;$(TargetDir)ru;$(TargetDir)tr;$(TargetDir)zh-Hans;$(TargetDir)zh-Hant" />
+    </ItemGroup>
+    <RemoveDir Directories="@(Net48SatelliteDirs)" />
+  </Target>
+
 </Project>

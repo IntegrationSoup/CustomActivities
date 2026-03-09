@@ -15,25 +15,11 @@ $excludedNames = @(
 )
 
 $excludedExtensions = @(
-    ".pdb",
+    ".config",
     ".deps.json",
+    ".json",
+    ".ps1",
     ".xml"
-)
-
-$excludedDirectories = @(
-    "cs",
-    "de",
-    "es",
-    "fr",
-    "it",
-    "ja",
-    "ko",
-    "pl",
-    "pt-BR",
-    "ru",
-    "tr",
-    "zh-Hans",
-    "zh-Hant"
 )
 
 $sourcePath = $PSScriptRoot
@@ -52,22 +38,17 @@ foreach ($destination in $destinations) {
             return
         }
 
-        if ($_.PSIsContainer -and ($excludedDirectories -contains $_.Name)) {
+        if ($_.PSIsContainer) {
             return
         }
 
-        if (-not $_.PSIsContainer -and ($excludedExtensions -contains $_.Extension)) {
+        if ($excludedExtensions -contains $_.Extension) {
             return
         }
 
         $targetPath = Join-Path -Path $destination -ChildPath $_.Name
 
-        if ($_.PSIsContainer) {
-            Copy-Item -LiteralPath $_.FullName -Destination $targetPath -Recurse -Force
-        }
-        else {
-            Copy-Item -LiteralPath $_.FullName -Destination $targetPath -Force
-        }
+        Copy-Item -LiteralPath $_.FullName -Destination $targetPath -Force
     }
 }
 
