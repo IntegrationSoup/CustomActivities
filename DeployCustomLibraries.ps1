@@ -2,6 +2,31 @@ param()
 
 $ErrorActionPreference = "Stop"
 
+function Test-IsAdministrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-IsAdministrator)) {
+    $hostPath = (Get-Process -Id $PID).Path
+    $arguments = @(
+        "-ExecutionPolicy", "Bypass",
+        "-File", "`"$PSCommandPath`""
+    )
+
+    try {
+        Start-Process -FilePath $hostPath -ArgumentList $arguments -Verb RunAs -WorkingDirectory $PSScriptRoot | Out-Null
+        Write-Host "A UAC prompt has been opened. Approve it to continue deployment."
+    }
+    catch {
+        Write-Warning "Deployment requires administrator access to write into Program Files. Re-run the script as administrator if you cancel the UAC prompt."
+        Read-Host "Press Enter to close"
+    }
+
+    exit
+}
+
 $destinations = @(
     "C:\Program Files (x86)\Popokey\Integration Host Server\Custom Libraries",
     "C:\Program Files (x86)\Popokey\HL7 Soup\Custom Libraries",
