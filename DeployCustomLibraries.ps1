@@ -33,6 +33,14 @@ $destinations = @(
     "C:\Program Files (x86)\Popokey\Integration Workflow Designer\Custom Libraries"
 )
 
+$destinationsRequiringSubdirectories = @(
+    "C:\Program Files (x86)\Popokey\Integration Host Server\Custom Libraries"
+)
+
+$subdirectoryIncludedExtensions = @(
+    ".exe"
+)
+
 $excludedNames = @(
     "HL7SoupIntegrations.dll",
     "HL7SoupIntegrations.dll.config",
@@ -43,6 +51,7 @@ $excludedExtensions = @(
     ".config",
     ".deps.json",
     ".json",
+    ".pdb",
     ".ps1",
     ".xml"
 )
@@ -64,6 +73,27 @@ foreach ($destination in $destinations) {
         }
 
         if ($_.PSIsContainer) {
+            if ($destinationsRequiringSubdirectories -notcontains $destination) {
+                return
+            }
+
+            $sourceDirectory = $_.FullName
+            $targetDirectory = Join-Path -Path $destination -ChildPath $_.Name
+            Get-ChildItem -LiteralPath $sourceDirectory -Recurse -File | ForEach-Object {
+                if ($subdirectoryIncludedExtensions -notcontains $_.Extension) {
+                    return
+                }
+
+                $relativePath = $_.FullName.Substring($sourceDirectory.Length).TrimStart('\')
+                $targetPath = Join-Path -Path $targetDirectory -ChildPath $relativePath
+                $targetParent = Split-Path -Path $targetPath -Parent
+
+                if (-not (Test-Path -LiteralPath $targetParent)) {
+                    New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
+                }
+
+                Copy-Item -LiteralPath $_.FullName -Destination $targetPath -Force
+            }
             return
         }
 

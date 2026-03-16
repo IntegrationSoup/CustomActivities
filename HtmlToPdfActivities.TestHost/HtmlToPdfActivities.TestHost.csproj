@@ -1,26 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFrameworks>net48;net6.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <RendererProjectPath>..\HtmlToPdfActivities.Renderer\HtmlToPdfActivities.Renderer.csproj</RendererProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\HL7Soup\HL7Parser\HL7SoupIntegrations\HL7SoupIntegrations.csproj" />
+    <ProjectReference Include="..\HtmlToPdfActivities\HtmlToPdfActivities.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\DeployCustomLibraries.ps1" Link="DeployCustomLibraries.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\ClearAllCustomLibraries.ps1" Link="ClearAllCustomLibraries.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <Target Name="BuildHtmlToPdfRenderer" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
+  <Target Name="BuildHtmlToPdfRenderer" AfterTargets="Build">
     <PropertyGroup>
       <RendererBuildOutputDirectory>$(MSBuildProjectDirectory)\..\HtmlToPdfActivities.Renderer\bin\$(Configuration)\net48\</RendererBuildOutputDirectory>
       <RendererOutputDirectory>$(TargetDir)HtmlToPdfRenderer\</RendererOutputDirectory>
@@ -39,5 +32,4 @@
       DestinationFiles="@(RendererFiles->'$(RendererOutputDirectory)%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true" />
   </Target>
-
 </Project>
