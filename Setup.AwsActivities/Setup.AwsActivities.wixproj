@@ -1,0 +1,64 @@
+<Project Sdk="WixToolset.Sdk/5.0.2" ToolsVersion="4.0">
+  <PropertyGroup>
+    <OutputName>IntegrationSoup.AWSActivities</OutputName>
+    <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
+    <InstallerPlatform>x86</InstallerPlatform>
+
+    <PayloadSourceDir>$(MSBuildProjectDirectory)\..\AmazonActivities\AmazonActivities\bin\$(Configuration)\netstandard2.0\</PayloadSourceDir>
+    <MainAssemblyPath>$(PayloadSourceDir)AmazonActivities.dll</MainAssemblyPath>
+
+    <GeneratedInstallerVersionFile>$(BaseIntermediateOutputPath)$(Configuration)\GeneratedInstallerVersion.wxi</GeneratedInstallerVersionFile>
+    <InstallerVersionCounterFile Condition="'$(InstallerVersionCounterFile)' == ''">$(LocalAppData)\Popokey\InstallerBuildCounters\AwsActivities.counter</InstallerVersionCounterFile>
+    <VersionScriptPath>$(MSBuildProjectDirectory)\..\InstallerTools\GenerateInstallerVersion.ps1</VersionScriptPath>
+
+    <DefineConstants>
+      $(DefineConstants);
+      PayloadSourceDir=$(PayloadSourceDir);
+      GeneratedInstallerVersionFile=$(MSBuildProjectDirectory)\$(GeneratedInstallerVersionFile)
+    </DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <SigntoolPath Condition="'$(SigntoolPath)' == ''">C:\Program Files (x86)\Windows Kits\10\bin\$(WindowsTargetPlatformVersion)\x64\signtool.exe</SigntoolPath>
+    <CodeSignThumbprint>1586FB787BD45270D870F90918EF887A121EB6DB</CodeSignThumbprint>
+    <TimestampUrl>http://ts.ssl.com</TimestampUrl>
+  </PropertyGroup>
+
+  <Target Name="GenerateInstallerVersion" BeforeTargets="BeforeBuild">
+    <MakeDir Directories="$(MSBuildProjectDirectory)\$(BaseIntermediateOutputPath)$(Configuration)\" />
+    <Exec Command="&quot;$(SystemRoot)\System32\WindowsPowerShell\v1.0\powershell.exe&quot; -ExecutionPolicy Bypass -File &quot;$(VersionScriptPath)&quot; -CounterFile &quot;$(InstallerVersionCounterFile)&quot; -OutputFile &quot;$(MSBuildProjectDirectory)\$(GeneratedInstallerVersionFile)&quot; -InstallerVersion &quot;$(InstallerVersion)&quot;" />
+  </Target>
+
+  <Target Name="ValidatePayload" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(MainAssemblyPath)')"
+           Text="Missing staged file '$(MainAssemblyPath)'. Build AmazonActivities before building the installer." />
+  </Target>
+
+  <Target Name="SignPayloads"
+          AfterTargets="ResolveReferences"
+          Condition="'$(Configuration)' == 'Release'">
+    <Exec Condition="Exists('$(MainAssemblyPath)')"
+          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) &quot;$(MainAssemblyPath)&quot;" />
+  </Target>
+
+  <Target Name="SignMsiOutput"
+          AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_Msi Include="$(MSBuildProjectDirectory)\bin\$(Configuration)\**\*.msi" />
+    </ItemGroup>
+
+    <Exec Condition="'@(_Msi)' != ''"
+          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /d &quot;Integration Soup AWS Activities&quot; /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) @(_Msi->'&quot;%(Identity)&quot;', ' ')" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Wix Include="**\*.wxs" />
+    <None Include="ProductVariables.wxi" />
+    <None Include="..\InstallerTools\GenerateInstallerVersion.ps1" Link="GenerateInstallerVersion.ps1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <?include $(var.ProjectDir)ProductVariables.wxi ?>
+  <?include $(var.GeneratedInstallerVersionFile) ?>
+
+  <Package Name="$(var.ProductDisplayName)"
+           Language="1033"
+           Version="$(var.InstallerVersion)"
+           Manufacturer="$(var.CompanyName)"
+           UpgradeCode="$(var.UpgradeCode)"
+           ProductCode="*"
+           Scope="perMachine"
+           InstallerVersion="500"
+           ShortNames="no">
+
+    <SummaryInformation Description="$(var.ProductDisplayName) $(var.ProductVersionString)"
+                        Keywords="HTML, PDF, Extension Library, Integration Soup, Installer" />
+
+    <Media Id="1" Cabinet="media1.cab" EmbedCab="yes" />
+
+    <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <Property Id="INTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\IntegrationSoupHostService"
+                      Type="raw" />
+    </Property>
+
+    <Property Id="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindLegacyIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\HL7SoupIntegrationHostServer"
+                      Type="raw" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
+        <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)">
+            <Directory Id="SERVERRENDERERFOLDER" Name="$(var.RendererFolderName)" />
+          </Directory>
+        </Directory>
+        <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
+          <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="WORKFLOWDESIGNERAPPLICATIONFOLDER" Name="$(var.IntegrationWorkflowDesignerFolderName)">
+          <Directory Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature"
+             Title="$(var.ProductDisplayName)"
+             Description="$(var.ProductDescription)"
+             Level="1"
+             AllowAdvertise="no"
+             AllowAbsent="yes">
+      <ComponentRef Id="ServerActivityDllComponent" />
+      <ComponentRef Id="ServerRendererExeComponent" />
+      <ComponentRef Id="ServerServiceRestartComponent" />
+      <ComponentRef Id="LegacyServerServiceRestartComponent" />
+      <ComponentRef Id="SoupActivityDllComponent" />
+      <ComponentRef Id="WorkflowDesignerActivityDllComponent" />
+    </Feature>
+
+    <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
+      <Component Id="ServerActivityDllComponent" Guid="{81D8A7EE-4C4D-4B61-A3F5-6D6C7630A581}">
+        <File Id="ServerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.HtmlToPdfActivitiesTargetDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="ServerServiceRestartComponent"
+                 Guid="{06A60F60-C6D1-4582-8B47-0A4387CD9E06}"
+                 Condition="INTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\HtmlToPdfActivities"
+                       Name="ServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartIntegrationSoupHostService"
+                        Name="IntegrationSoupHostService"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+
+      <Component Id="LegacyServerServiceRestartComponent"
+                 Guid="{41894534-D1DB-42F4-B1E4-BE96D3F8674D}"
+                 Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\HtmlToPdfActivities"
+                       Name="LegacyServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartLegacyIntegrationSoupHostService"
+                        Name="HL7SoupIntegrationHostServer"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SERVERRENDERERFOLDER">
+      <Component Id="ServerRendererExeComponent" Guid="{28B3C5E9-F737-4654-8A8D-51C9DDCB4C14}">
+        <File Id="ServerRendererExeFile"
+              Name="$(var.RendererFileName)"
+              Source="$(var.HtmlToPdfRendererTargetDir)$(var.RendererFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
+      <Component Id="SoupActivityDllComponent" Guid="{0705BFF0-E6E6-4C33-94E8-026013E34A8C}">
+        <File Id="SoupActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.HtmlToPdfActivitiesTargetDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
+      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{C2CE0E67-929C-4B29-91DD-4AF1A0C7CEBC}">
+        <File Id="WorkflowDesignerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.HtmlToPdfActivitiesTargetDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+  </Package>
+</Wix>

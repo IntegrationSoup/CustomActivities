@@ -1,0 +1,15 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup Encryption Activities Extension Library" ?>
+  <?define ProductDescription = "Installs the encryption extension library for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define PayloadFileName = "HL7SoupEncryptionActivities.dll" ?>
+  <?define UpgradeCode = "{B4EA8F0F-5B7C-4D5E-A63F-64F6A17B8E74}" ?>
+</Include>

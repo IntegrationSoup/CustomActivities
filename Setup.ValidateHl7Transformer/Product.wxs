@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <?include $(var.ProjectDir)ProductVariables.wxi ?>
+  <?include $(var.GeneratedInstallerVersionFile) ?>
+
+  <Package Name="$(var.ProductDisplayName)"
+           Language="1033"
+           Version="$(var.InstallerVersion)"
+           Manufacturer="$(var.CompanyName)"
+           UpgradeCode="$(var.UpgradeCode)"
+           ProductCode="*"
+           Scope="perMachine"
+           InstallerVersion="500"
+           ShortNames="no">
+
+    <SummaryInformation Description="$(var.ProductDisplayName) $(var.ProductVersionString)"
+                        Keywords="Integration Soup, Extension Library, Installer, Validation, HL7" />
+
+    <Media Id="1" Cabinet="media1.cab" EmbedCab="yes" />
+
+    <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <Property Id="INTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\IntegrationSoupHostService"
+                      Type="raw" />
+    </Property>
+
+    <Property Id="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindLegacyIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\HL7SoupIntegrationHostServer"
+                      Type="raw" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
+        <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
+          <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="WORKFLOWDESIGNERAPPLICATIONFOLDER" Name="$(var.IntegrationWorkflowDesignerFolderName)">
+          <Directory Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature"
+             Title="$(var.ProductDisplayName)"
+             Description="$(var.ProductDescription)"
+             Level="1"
+             AllowAdvertise="no"
+             AllowAbsent="yes">
+      <ComponentRef Id="ValidateTransformerPayloadComponent" />
+      <ComponentRef Id="ServerServiceRestartComponent" />
+      <ComponentRef Id="LegacyServerServiceRestartComponent" />
+    </Feature>
+
+    <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
+      <Component Id="ValidateTransformerPayloadComponent"
+                 Guid="{919A3654-473F-4FF3-93F3-3341455113D3}">
+        <File Id="ValidateTransformerPayloadFile"
+              Name="$(var.PayloadFileName)"
+              Source="$(var.PayloadSourceDir)$(var.PayloadFileName)"
+              KeyPath="yes">
+          <CopyFile Id="CopyValidateTransformerToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopyValidateTransformerToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="ServerServiceRestartComponent"
+                 Guid="{E3000B80-1B6B-4A89-8F15-E30844E1320F}"
+                 Condition="INTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\ValidateHl7Transformer"
+                       Name="ServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartIntegrationSoupHostService"
+                        Name="IntegrationSoupHostService"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+
+      <Component Id="LegacyServerServiceRestartComponent"
+                 Guid="{AB51549C-072A-4DCC-9EE4-7817D1A28C97}"
+                 Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\ValidateHl7Transformer"
+                       Name="LegacyServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartLegacyIntegrationSoupHostService"
+                        Name="HL7SoupIntegrationHostServer"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+  </Package>
+</Wix>

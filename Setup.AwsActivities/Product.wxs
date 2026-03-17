@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <?include $(var.ProjectDir)ProductVariables.wxi ?>
+  <?include $(var.GeneratedInstallerVersionFile) ?>
+
+  <Package Name="$(var.ProductDisplayName)"
+           Language="1033"
+           Version="$(var.InstallerVersion)"
+           Manufacturer="$(var.CompanyName)"
+           UpgradeCode="$(var.UpgradeCode)"
+           ProductCode="*"
+           Scope="perMachine"
+           InstallerVersion="500"
+           ShortNames="no">
+
+    <SummaryInformation Description="$(var.ProductDisplayName) $(var.ProductVersionString)"
+                        Keywords="Integration Soup, Extension Library, Installer, AWS, S3" />
+
+    <Media Id="1" Cabinet="media1.cab" EmbedCab="yes" />
+
+    <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <Property Id="INTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\IntegrationSoupHostService"
+                      Type="raw" />
+    </Property>
+
+    <Property Id="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindLegacyIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\HL7SoupIntegrationHostServer"
+                      Type="raw" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
+        <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
+          <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="WORKFLOWDESIGNERAPPLICATIONFOLDER" Name="$(var.IntegrationWorkflowDesignerFolderName)">
+          <Directory Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature"
+             Title="$(var.ProductDisplayName)"
+             Description="$(var.ProductDescription)"
+             Level="1"
+             AllowAdvertise="no"
+             AllowAbsent="yes">
+      <ComponentGroupRef Id="PayloadComponents" />
+      <ComponentRef Id="ServerServiceRestartComponent" />
+      <ComponentRef Id="LegacyServerServiceRestartComponent" />
+    </Feature>
+
+    <ComponentGroup Id="PayloadComponents">
+      <ComponentRef Id="AmazonActivitiesComponent" />
+      <ComponentRef Id="AwssdkCoreComponent" />
+      <ComponentRef Id="AwssdkS3Component" />
+      <ComponentRef Id="MicrosoftBclAsyncInterfacesComponent" />
+      <ComponentRef Id="SystemConfigurationConfigurationManagerComponent" />
+      <ComponentRef Id="SystemRuntimeCompilerServicesUnsafeComponent" />
+      <ComponentRef Id="SystemThreadingTasksExtensionsComponent" />
+    </ComponentGroup>
+
+    <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
+      <Component Id="AmazonActivitiesComponent"
+                 Guid="{4A71F118-2AD4-4A5E-9684-D2D217B6C611}">
+        <File Id="AmazonActivitiesFile"
+              Name="AmazonActivities.dll"
+              Source="$(var.PayloadSourceDir)AmazonActivities.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopyAmazonActivitiesToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopyAmazonActivitiesToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="AwssdkCoreComponent"
+                 Guid="{300DB755-6DE4-4D71-B8A1-BBE5BC2CB8E0}">
+        <File Id="AwssdkCoreFile"
+              Name="AWSSDK.Core.dll"
+              Source="$(var.PayloadSourceDir)AWSSDK.Core.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopyAwssdkCoreToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopyAwssdkCoreToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="AwssdkS3Component"
+                 Guid="{A5B1D45F-8A84-425A-8E8C-B5E0B8AFB086}">
+        <File Id="AwssdkS3File"
+              Name="AWSSDK.S3.dll"
+              Source="$(var.PayloadSourceDir)AWSSDK.S3.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopyAwssdkS3ToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopyAwssdkS3ToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="MicrosoftBclAsyncInterfacesComponent"
+                 Guid="{9D30B5D1-0D2A-4F8B-9098-3C0A8E70C311}">
+        <File Id="MicrosoftBclAsyncInterfacesFile"
+              Name="Microsoft.Bcl.AsyncInterfaces.dll"
+              Source="$(var.PayloadSourceDir)Microsoft.Bcl.AsyncInterfaces.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopyMicrosoftBclAsyncInterfacesToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopyMicrosoftBclAsyncInterfacesToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="SystemConfigurationConfigurationManagerComponent"
+                 Guid="{3DF8E97D-A6CF-4B2A-B1BC-B617859C5E01}">
+        <File Id="SystemConfigurationConfigurationManagerFile"
+              Name="System.Configuration.ConfigurationManager.dll"
+              Source="$(var.PayloadSourceDir)System.Configuration.ConfigurationManager.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopySystemConfigurationConfigurationManagerToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopySystemConfigurationConfigurationManagerToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="SystemRuntimeCompilerServicesUnsafeComponent"
+                 Guid="{56B80F06-C8A2-4323-98DF-C5D6A8B0D2EF}">
+        <File Id="SystemRuntimeCompilerServicesUnsafeFile"
+              Name="System.Runtime.CompilerServices.Unsafe.dll"
+              Source="$(var.PayloadSourceDir)System.Runtime.CompilerServices.Unsafe.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopySystemRuntimeCompilerServicesUnsafeToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopySystemRuntimeCompilerServicesUnsafeToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="SystemThreadingTasksExtensionsComponent"
+                 Guid="{94F2B7D5-91E6-4C85-9B29-6AFAF89DF4A7}">
+        <File Id="SystemThreadingTasksExtensionsFile"
+              Name="System.Threading.Tasks.Extensions.dll"
+              Source="$(var.PayloadSourceDir)System.Threading.Tasks.Extensions.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopySystemThreadingTasksExtensionsToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopySystemThreadingTasksExtensionsToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="ServerServiceRestartComponent"
+                 Guid="{D2B694AB-8C64-4CC9-BFCF-EA2C4EFCD020}"
+                 Condition="INTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\AwsActivities"
+                       Name="ServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartIntegrationSoupHostService"
+                        Name="IntegrationSoupHostService"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+
+      <Component Id="LegacyServerServiceRestartComponent"
+                 Guid="{E4944FE1-03D1-4D7B-92C1-307D2B7D5841}"
+                 Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\AwsActivities"
+                       Name="LegacyServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartLegacyIntegrationSoupHostService"
+                        Name="HL7SoupIntegrationHostServer"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+  </Package>
+</Wix>

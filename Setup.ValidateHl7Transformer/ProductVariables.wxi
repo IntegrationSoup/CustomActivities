@@ -1,0 +1,15 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup Validate HL7 Transformer Extension Library" ?>
+  <?define ProductDescription = "Installs the Validate HL7 Transformer extension library for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define PayloadFileName = "ValidateTransformer.dll" ?>
+  <?define UpgradeCode = "{A84BAA7F-2A2E-4B49-B783-4B603B8A1807}" ?>
+</Include>

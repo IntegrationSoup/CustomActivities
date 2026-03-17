@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <?include $(var.ProjectDir)ProductVariables.wxi ?>
+  <?include $(var.GeneratedInstallerVersionFile) ?>
+
+  <Package Name="$(var.ProductDisplayName)"
+           Language="1033"
+           Version="$(var.InstallerVersion)"
+           Manufacturer="$(var.CompanyName)"
+           UpgradeCode="$(var.UpgradeCode)"
+           ProductCode="*"
+           Scope="perMachine"
+           InstallerVersion="500"
+           ShortNames="no">
+
+    <SummaryInformation Description="$(var.ProductDisplayName) $(var.ProductVersionString)"
+                        Keywords="Integration Soup, Extension Library, Installer, Encryption" />
+
+    <Media Id="1" Cabinet="media1.cab" EmbedCab="yes" />
+
+    <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <Property Id="INTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\IntegrationSoupHostService"
+                      Type="raw" />
+    </Property>
+
+    <Property Id="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindLegacyIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\HL7SoupIntegrationHostServer"
+                      Type="raw" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
+        <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
+          <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="WORKFLOWDESIGNERAPPLICATIONFOLDER" Name="$(var.IntegrationWorkflowDesignerFolderName)">
+          <Directory Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature"
+             Title="$(var.ProductDisplayName)"
+             Description="$(var.ProductDescription)"
+             Level="1"
+             AllowAdvertise="no"
+             AllowAbsent="yes">
+      <ComponentGroupRef Id="PayloadComponents" />
+      <ComponentRef Id="ServerServiceRestartComponent" />
+      <ComponentRef Id="LegacyServerServiceRestartComponent" />
+    </Feature>
+
+    <ComponentGroup Id="PayloadComponents">
+      <ComponentRef Id="EncryptionActivitiesComponent" />
+      <ComponentRef Id="SystemConfigurationConfigurationManagerComponent" />
+    </ComponentGroup>
+
+    <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
+      <Component Id="EncryptionActivitiesComponent"
+                 Guid="{45A6FAAF-66A8-4807-B4A6-C3C60FB6C918}">
+        <File Id="EncryptionActivitiesFile"
+              Name="HL7SoupEncryptionActivities.dll"
+              Source="$(var.PayloadSourceDir)HL7SoupEncryptionActivities.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopyEncryptionActivitiesToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopyEncryptionActivitiesToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="SystemConfigurationConfigurationManagerComponent"
+                 Guid="{3DF8E97D-A6CF-4B2A-B1BC-B617859C5E01}">
+        <File Id="SystemConfigurationConfigurationManagerFile"
+              Name="System.Configuration.ConfigurationManager.dll"
+              Source="$(var.PayloadSourceDir)System.Configuration.ConfigurationManager.dll"
+              KeyPath="yes">
+          <CopyFile Id="CopyEncryptionSystemConfigurationConfigurationManagerToSoup"
+                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
+          <CopyFile Id="CopyEncryptionSystemConfigurationConfigurationManagerToWorkflowDesigner"
+                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="ServerServiceRestartComponent"
+                 Guid="{E4A6D6A4-1D6A-4CCF-B0D7-F4140F8D34C3}"
+                 Condition="INTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\EncryptionActivities"
+                       Name="ServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartIntegrationSoupHostService"
+                        Name="IntegrationSoupHostService"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+
+      <Component Id="LegacyServerServiceRestartComponent"
+                 Guid="{60DCE6D7-42B5-422A-B143-C2FC3E570DB4}"
+                 Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\EncryptionActivities"
+                       Name="LegacyServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartLegacyIntegrationSoupHostService"
+                        Name="HL7SoupIntegrationHostServer"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+  </Package>
+</Wix>

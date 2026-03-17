@@ -1,0 +1,18 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup HTML to PDF Extension Library" ?>
+  <?define ProductDescription = "Installs the HTML to PDF extension library for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define ActivityFileName = "HtmlToPdfActivities.dll" ?>
+  <?define RendererFolderName = "HtmlToPdfRenderer" ?>
+  <?define RendererFileName = "HtmlToPdfRenderer.exe" ?>
+
+  <?define UpgradeCode = "{7B0B07A6-C0B1-4B18-9A20-6A7DB6E381F7}" ?>
+</Include>
