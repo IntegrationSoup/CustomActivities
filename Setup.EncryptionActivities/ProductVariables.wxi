@@ -10,6 +10,9 @@
   <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
   <?define CustomLibrariesFolderName = "Custom Libraries" ?>
 
-  <?define PayloadFileName = "HL7SoupEncryptionActivities.dll" ?>
+  <?define ActivityFileName = "HL7SoupEncryptionActivities.dll" ?>
+  <?define RunnerFolderName = "EncryptionActivitiesRunner" ?>
+  <?define RunnerExecutableName = "EncryptionActivitiesRunner.exe" ?>
+  <?define RunnerConfigFileName = "EncryptionActivitiesRunner.exe.config" ?>
   <?define UpgradeCode = "{B4EA8F0F-5B7C-4D5E-A63F-64F6A17B8E74}" ?>
 </Include>

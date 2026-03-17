@@ -41,7 +41,9 @@
     <StandardDirectory Id="ProgramFilesFolder">
       <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
         <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
-          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)">
+            <Directory Id="SERVERRUNNERFOLDER" Name="$(var.RunnerFolderName)" />
+          </Directory>
         </Directory>
         <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
           <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
@@ -58,115 +60,31 @@
              Level="1"
              AllowAdvertise="no"
              AllowAbsent="yes">
-      <ComponentGroupRef Id="PayloadComponents" />
+      <ComponentRef Id="ServerActivityDllComponent" />
+      <ComponentGroupRef Id="RunnerComponents" />
       <ComponentRef Id="ServerServiceRestartComponent" />
       <ComponentRef Id="LegacyServerServiceRestartComponent" />
+      <ComponentRef Id="SoupActivityDllComponent" />
+      <ComponentRef Id="WorkflowDesignerActivityDllComponent" />
     </Feature>
 
-    <ComponentGroup Id="PayloadComponents">
-      <ComponentRef Id="AmazonActivitiesComponent" />
+    <ComponentGroup Id="RunnerComponents">
+      <ComponentRef Id="RunnerExecutableComponent" />
+      <ComponentRef Id="RunnerConfigComponent" />
       <ComponentRef Id="AwssdkCoreComponent" />
       <ComponentRef Id="AwssdkS3Component" />
-      <ComponentRef Id="MicrosoftBclAsyncInterfacesComponent" />
-      <ComponentRef Id="SystemConfigurationConfigurationManagerComponent" />
-      <ComponentRef Id="SystemRuntimeCompilerServicesUnsafeComponent" />
-      <ComponentRef Id="SystemThreadingTasksExtensionsComponent" />
     </ComponentGroup>
 
     <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
-      <Component Id="AmazonActivitiesComponent"
-                 Guid="{4A71F118-2AD4-4A5E-9684-D2D217B6C611}">
-        <File Id="AmazonActivitiesFile"
-              Name="AmazonActivities.dll"
-              Source="$(var.PayloadSourceDir)AmazonActivities.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyAmazonActivitiesToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyAmazonActivitiesToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="AwssdkCoreComponent"
-                 Guid="{300DB755-6DE4-4D71-B8A1-BBE5BC2CB8E0}">
-        <File Id="AwssdkCoreFile"
-              Name="AWSSDK.Core.dll"
-              Source="$(var.PayloadSourceDir)AWSSDK.Core.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyAwssdkCoreToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyAwssdkCoreToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="AwssdkS3Component"
-                 Guid="{A5B1D45F-8A84-425A-8E8C-B5E0B8AFB086}">
-        <File Id="AwssdkS3File"
-              Name="AWSSDK.S3.dll"
-              Source="$(var.PayloadSourceDir)AWSSDK.S3.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyAwssdkS3ToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyAwssdkS3ToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="MicrosoftBclAsyncInterfacesComponent"
-                 Guid="{9D30B5D1-0D2A-4F8B-9098-3C0A8E70C311}">
-        <File Id="MicrosoftBclAsyncInterfacesFile"
-              Name="Microsoft.Bcl.AsyncInterfaces.dll"
-              Source="$(var.PayloadSourceDir)Microsoft.Bcl.AsyncInterfaces.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyMicrosoftBclAsyncInterfacesToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyMicrosoftBclAsyncInterfacesToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemConfigurationConfigurationManagerComponent"
-                 Guid="{3DF8E97D-A6CF-4B2A-B1BC-B617859C5E01}">
-        <File Id="SystemConfigurationConfigurationManagerFile"
-              Name="System.Configuration.ConfigurationManager.dll"
-              Source="$(var.PayloadSourceDir)System.Configuration.ConfigurationManager.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemConfigurationConfigurationManagerToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemConfigurationConfigurationManagerToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemRuntimeCompilerServicesUnsafeComponent"
-                 Guid="{56B80F06-C8A2-4323-98DF-C5D6A8B0D2EF}">
-        <File Id="SystemRuntimeCompilerServicesUnsafeFile"
-              Name="System.Runtime.CompilerServices.Unsafe.dll"
-              Source="$(var.PayloadSourceDir)System.Runtime.CompilerServices.Unsafe.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemRuntimeCompilerServicesUnsafeToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemRuntimeCompilerServicesUnsafeToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemThreadingTasksExtensionsComponent"
-                 Guid="{94F2B7D5-91E6-4C85-9B29-6AFAF89DF4A7}">
-        <File Id="SystemThreadingTasksExtensionsFile"
-              Name="System.Threading.Tasks.Extensions.dll"
-              Source="$(var.PayloadSourceDir)System.Threading.Tasks.Extensions.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemThreadingTasksExtensionsToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemThreadingTasksExtensionsToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
+      <Component Id="ServerActivityDllComponent" Guid="{CFB5C850-A1C5-4811-9CE0-2E2251B75C1A}">
+        <File Id="ServerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
       </Component>
 
       <Component Id="ServerServiceRestartComponent"
-                 Guid="{D2B694AB-8C64-4CC9-BFCF-EA2C4EFCD020}"
+                 Guid="{8BDA6CD4-7C96-4F0A-A5F1-60AC0ED071D4}"
                  Condition="INTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
                        Key="Software\Popokey\AwsActivities"
@@ -182,7 +100,7 @@
       </Component>
 
       <Component Id="LegacyServerServiceRestartComponent"
-                 Guid="{E4944FE1-03D1-4D7B-92C1-307D2B7D5841}"
+                 Guid="{95CEF308-84C5-4C54-8AD3-2E41BEBA1BEE}"
                  Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
                        Key="Software\Popokey\AwsActivities"
@@ -195,6 +113,54 @@
                         Stop="both"
                         Start="install"
                         Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SERVERRUNNERFOLDER">
+      <Component Id="RunnerExecutableComponent" Guid="{244A06BA-A736-4D49-86B6-6D9852B869FC}">
+        <File Id="RunnerExecutableFile"
+              Name="$(var.RunnerExecutableName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerExecutableName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="RunnerConfigComponent" Guid="{266C0231-6220-436C-9C14-E7C7ED8FB38F}">
+        <File Id="RunnerConfigFile"
+              Name="$(var.RunnerConfigFileName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerConfigFileName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AwssdkCoreComponent" Guid="{D7F4E5BF-85AE-4EA2-B328-5A9B4B51A8F1}">
+        <File Id="AwssdkCoreFile"
+              Name="AWSSDK.Core.dll"
+              Source="$(var.RunnerSourceDir)AWSSDK.Core.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AwssdkS3Component" Guid="{B4CC8371-3868-448C-A962-81EEB11FCA2C}">
+        <File Id="AwssdkS3File"
+              Name="AWSSDK.S3.dll"
+              Source="$(var.RunnerSourceDir)AWSSDK.S3.dll"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
+      <Component Id="SoupActivityDllComponent" Guid="{E0096F1B-F4A0-4B46-9197-C0A59BB023D2}">
+        <File Id="SoupActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
+      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{064C2B2D-5D12-4A68-9E26-93089E0B51D6}">
+        <File Id="WorkflowDesignerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
       </Component>
     </DirectoryRef>
 

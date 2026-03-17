@@ -10,6 +10,9 @@
   <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
   <?define CustomLibrariesFolderName = "Custom Libraries" ?>
 
-  <?define PayloadFileName = "AmazonActivities.dll" ?>
+  <?define ActivityFileName = "AmazonActivities.dll" ?>
+  <?define RunnerFolderName = "AwsActivitiesRunner" ?>
+  <?define RunnerExecutableName = "AwsActivitiesRunner.exe" ?>
+  <?define RunnerConfigFileName = "AwsActivitiesRunner.exe.config" ?>
   <?define UpgradeCode = "{4BC6D2AB-6F6D-4A03-A09B-E82B9EB4FDD8}" ?>
 </Include>

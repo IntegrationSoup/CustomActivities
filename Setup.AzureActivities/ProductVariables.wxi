@@ -10,6 +10,9 @@
   <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
   <?define CustomLibrariesFolderName = "Custom Libraries" ?>
 
-  <?define PayloadFileName = "AzureActivities.dll" ?>
+  <?define ActivityFileName = "AzureActivities.dll" ?>
+  <?define RunnerFolderName = "AzureActivitiesRunner" ?>
+  <?define RunnerExecutableName = "AzureActivitiesRunner.exe" ?>
+  <?define RunnerConfigFileName = "AzureActivitiesRunner.exe.config" ?>
   <?define UpgradeCode = "{CC77DF1B-0646-4D8E-A6A4-418E64FA322F}" ?>
 </Include>

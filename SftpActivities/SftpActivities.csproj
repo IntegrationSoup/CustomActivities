@@ -3,28 +3,27 @@
   <PropertyGroup>
     <TargetFrameworks>net48;net6.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <RunnerProjectPath>..\..\HL7SoupEncryptionActivities.Runner\HL7SoupEncryptionActivities.Runner.csproj</RunnerProjectPath>
+    <RunnerProjectPath>..\SftpActivities.Runner\SftpActivities.Runner.csproj</RunnerProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\HL7Soup\HL7Parser\HL7SoupIntegrations\HL7SoupIntegrations.csproj" />
+    <ProjectReference Include="..\..\HL7Soup\HL7Parser\HL7SoupIntegrations\HL7SoupIntegrations.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\DeployCustomLibraries.ps1" Link="DeployCustomLibraries.ps1">
+    <None Include="..\DeployCustomLibraries.ps1" Link="DeployCustomLibraries.ps1">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\..\ClearAllCustomLibraries.ps1" Link="ClearAllCustomLibraries.ps1">
+    <None Include="..\ClearAllCustomLibraries.ps1" Link="ClearAllCustomLibraries.ps1">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 
-  <Target Name="BuildEncryptionRunner" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
+  <Target Name="BuildSftpRunner" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
     <PropertyGroup>
-      <RunnerBuildOutputDirectory>$(MSBuildProjectDirectory)\..\..\HL7SoupEncryptionActivities.Runner\bin\$(Configuration)\net48\</RunnerBuildOutputDirectory>
-      <RunnerOutputDirectory>$(TargetDir)EncryptionActivitiesRunner\</RunnerOutputDirectory>
+      <RunnerBuildOutputDirectory>$(MSBuildProjectDirectory)\..\SftpActivities.Runner\bin\$(Configuration)\net48\</RunnerBuildOutputDirectory>
+      <RunnerOutputDirectory>$(TargetDir)SftpActivitiesRunner\</RunnerOutputDirectory>
     </PropertyGroup>
     <MSBuild
       Projects="$(RunnerProjectPath)"

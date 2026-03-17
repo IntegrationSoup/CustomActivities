@@ -41,7 +41,9 @@
     <StandardDirectory Id="ProgramFilesFolder">
       <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
         <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
-          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)">
+            <Directory Id="SERVERRUNNERFOLDER" Name="$(var.RunnerFolderName)" />
+          </Directory>
         </Directory>
         <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
           <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
@@ -58,19 +60,22 @@
              Level="1"
              AllowAdvertise="no"
              AllowAbsent="yes">
-      <ComponentGroupRef Id="PayloadComponents" />
+      <ComponentRef Id="ServerActivityDllComponent" />
+      <ComponentGroupRef Id="RunnerComponents" />
       <ComponentRef Id="ServerServiceRestartComponent" />
       <ComponentRef Id="LegacyServerServiceRestartComponent" />
+      <ComponentRef Id="SoupActivityDllComponent" />
+      <ComponentRef Id="WorkflowDesignerActivityDllComponent" />
     </Feature>
 
-    <ComponentGroup Id="PayloadComponents">
+    <ComponentGroup Id="RunnerComponents">
+      <ComponentRef Id="RunnerExecutableComponent" />
+      <ComponentRef Id="RunnerConfigComponent" />
       <ComponentRef Id="AzureCoreComponent" />
       <ComponentRef Id="AzureStorageBlobsComponent" />
       <ComponentRef Id="AzureStorageCommonComponent" />
-      <ComponentRef Id="AzureActivitiesComponent" />
       <ComponentRef Id="MicrosoftBclAsyncInterfacesComponent" />
       <ComponentRef Id="SystemBuffersComponent" />
-      <ComponentRef Id="SystemConfigurationConfigurationManagerComponent" />
       <ComponentRef Id="SystemDiagnosticsDiagnosticSourceComponent" />
       <ComponentRef Id="SystemIoHashingComponent" />
       <ComponentRef Id="SystemMemoryDataComponent" />
@@ -80,219 +85,19 @@
       <ComponentRef Id="SystemTextEncodingsWebComponent" />
       <ComponentRef Id="SystemTextJsonComponent" />
       <ComponentRef Id="SystemThreadingTasksExtensionsComponent" />
+      <ComponentRef Id="SystemValueTupleComponent" />
     </ComponentGroup>
 
     <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
-      <Component Id="AzureCoreComponent"
-                 Guid="{714232F2-C06B-4692-9201-C771B83191E0}">
-        <File Id="AzureCoreFile"
-              Name="Azure.Core.dll"
-              Source="$(var.PayloadSourceDir)Azure.Core.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyAzureCoreToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyAzureCoreToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="AzureStorageBlobsComponent"
-                 Guid="{716A3A9E-D427-44AC-8B71-962905FE276C}">
-        <File Id="AzureStorageBlobsFile"
-              Name="Azure.Storage.Blobs.dll"
-              Source="$(var.PayloadSourceDir)Azure.Storage.Blobs.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyAzureStorageBlobsToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyAzureStorageBlobsToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="AzureStorageCommonComponent"
-                 Guid="{62CFC96F-C9BE-456E-9E1C-CB4D835B884D}">
-        <File Id="AzureStorageCommonFile"
-              Name="Azure.Storage.Common.dll"
-              Source="$(var.PayloadSourceDir)Azure.Storage.Common.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyAzureStorageCommonToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyAzureStorageCommonToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="AzureActivitiesComponent"
-                 Guid="{BDB3FAE1-21EF-486D-9A68-F24BF96E9F50}">
-        <File Id="AzureActivitiesFile"
-              Name="AzureActivities.dll"
-              Source="$(var.PayloadSourceDir)AzureActivities.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyAzureActivitiesToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyAzureActivitiesToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="MicrosoftBclAsyncInterfacesComponent"
-                 Guid="{9D30B5D1-0D2A-4F8B-9098-3C0A8E70C311}">
-        <File Id="MicrosoftBclAsyncInterfacesFile"
-              Name="Microsoft.Bcl.AsyncInterfaces.dll"
-              Source="$(var.PayloadSourceDir)Microsoft.Bcl.AsyncInterfaces.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyMicrosoftBclAsyncInterfacesToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyMicrosoftBclAsyncInterfacesToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemBuffersComponent"
-                 Guid="{B8A570EF-1B5F-48AD-A1FD-91A528A1269D}">
-        <File Id="SystemBuffersFile"
-              Name="System.Buffers.dll"
-              Source="$(var.PayloadSourceDir)System.Buffers.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemBuffersToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemBuffersToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemConfigurationConfigurationManagerComponent"
-                 Guid="{3DF8E97D-A6CF-4B2A-B1BC-B617859C5E01}">
-        <File Id="SystemConfigurationConfigurationManagerFile"
-              Name="System.Configuration.ConfigurationManager.dll"
-              Source="$(var.PayloadSourceDir)System.Configuration.ConfigurationManager.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemConfigurationConfigurationManagerToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemConfigurationConfigurationManagerToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemDiagnosticsDiagnosticSourceComponent"
-                 Guid="{C314D6DA-E7D1-4A4A-A5D3-4D2632B77E48}">
-        <File Id="SystemDiagnosticsDiagnosticSourceFile"
-              Name="System.Diagnostics.DiagnosticSource.dll"
-              Source="$(var.PayloadSourceDir)System.Diagnostics.DiagnosticSource.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemDiagnosticsDiagnosticSourceToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemDiagnosticsDiagnosticSourceToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemIoHashingComponent"
-                 Guid="{9AC720E7-ECC7-4DB0-AB21-5D8CB4D4D2A3}">
-        <File Id="SystemIoHashingFile"
-              Name="System.IO.Hashing.dll"
-              Source="$(var.PayloadSourceDir)System.IO.Hashing.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemIoHashingToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemIoHashingToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemMemoryDataComponent"
-                 Guid="{8D93295E-6E6A-426F-B46D-BEF753D9CD52}">
-        <File Id="SystemMemoryDataFile"
-              Name="System.Memory.Data.dll"
-              Source="$(var.PayloadSourceDir)System.Memory.Data.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemMemoryDataToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemMemoryDataToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemMemoryComponent"
-                 Guid="{E3A98C16-AF9D-40CA-B17B-A1A4D6B0B6CA}">
-        <File Id="SystemMemoryFile"
-              Name="System.Memory.dll"
-              Source="$(var.PayloadSourceDir)System.Memory.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemMemoryToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemMemoryToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemNumericsVectorsComponent"
-                 Guid="{AF0CB63C-A1F7-44C2-A86F-66E2B2EFA297}">
-        <File Id="SystemNumericsVectorsFile"
-              Name="System.Numerics.Vectors.dll"
-              Source="$(var.PayloadSourceDir)System.Numerics.Vectors.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemNumericsVectorsToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemNumericsVectorsToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemRuntimeCompilerServicesUnsafeComponent"
-                 Guid="{56B80F06-C8A2-4323-98DF-C5D6A8B0D2EF}">
-        <File Id="SystemRuntimeCompilerServicesUnsafeFile"
-              Name="System.Runtime.CompilerServices.Unsafe.dll"
-              Source="$(var.PayloadSourceDir)System.Runtime.CompilerServices.Unsafe.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemRuntimeCompilerServicesUnsafeToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemRuntimeCompilerServicesUnsafeToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemTextEncodingsWebComponent"
-                 Guid="{2A4C1788-EFCA-446D-AE16-B8B55C4DB523}">
-        <File Id="SystemTextEncodingsWebFile"
-              Name="System.Text.Encodings.Web.dll"
-              Source="$(var.PayloadSourceDir)System.Text.Encodings.Web.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemTextEncodingsWebToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemTextEncodingsWebToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemTextJsonComponent"
-                 Guid="{2A9A3B3C-2F12-424B-9303-27B85F5653D6}">
-        <File Id="SystemTextJsonFile"
-              Name="System.Text.Json.dll"
-              Source="$(var.PayloadSourceDir)System.Text.Json.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemTextJsonToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemTextJsonToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemThreadingTasksExtensionsComponent"
-                 Guid="{94F2B7D5-91E6-4C85-9B29-6AFAF89DF4A7}">
-        <File Id="SystemThreadingTasksExtensionsFile"
-              Name="System.Threading.Tasks.Extensions.dll"
-              Source="$(var.PayloadSourceDir)System.Threading.Tasks.Extensions.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopySystemThreadingTasksExtensionsToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopySystemThreadingTasksExtensionsToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
+      <Component Id="ServerActivityDllComponent" Guid="{BF3CDCA6-2115-4F6B-B9D7-DF78D980DB0F}">
+        <File Id="ServerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
       </Component>
 
       <Component Id="ServerServiceRestartComponent"
-                 Guid="{A3290E3D-1B3F-4C17-B434-4CC2B54A6E43}"
+                 Guid="{18FF687E-7E38-42D1-900F-6577C55F83A4}"
                  Condition="INTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
                        Key="Software\Popokey\AzureActivities"
@@ -308,7 +113,7 @@
       </Component>
 
       <Component Id="LegacyServerServiceRestartComponent"
-                 Guid="{ED5C10C4-40EA-453D-8143-466516B2AD93}"
+                 Guid="{D834B036-5639-4CB1-B37C-5B531CC3A6C5}"
                  Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
                        Key="Software\Popokey\AzureActivities"
@@ -321,6 +126,145 @@
                         Stop="both"
                         Start="install"
                         Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SERVERRUNNERFOLDER">
+      <Component Id="RunnerExecutableComponent" Guid="{21140AD3-4C65-4A06-A562-B067A2474A54}">
+        <File Id="RunnerExecutableFile"
+              Name="$(var.RunnerExecutableName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerExecutableName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="RunnerConfigComponent" Guid="{5821A286-63A2-4D09-895D-EA335BBB2E35}">
+        <File Id="RunnerConfigFile"
+              Name="$(var.RunnerConfigFileName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerConfigFileName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AzureCoreComponent" Guid="{394FA79B-51F6-465E-BFD8-6E0E888D94E1}">
+        <File Id="AzureCoreFile"
+              Name="Azure.Core.dll"
+              Source="$(var.RunnerSourceDir)Azure.Core.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AzureStorageBlobsComponent" Guid="{C27F4C16-B4EE-413B-8C98-304F9B29E251}">
+        <File Id="AzureStorageBlobsFile"
+              Name="Azure.Storage.Blobs.dll"
+              Source="$(var.RunnerSourceDir)Azure.Storage.Blobs.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AzureStorageCommonComponent" Guid="{B8597994-C77E-4B97-ADD6-9963E133D4DE}">
+        <File Id="AzureStorageCommonFile"
+              Name="Azure.Storage.Common.dll"
+              Source="$(var.RunnerSourceDir)Azure.Storage.Common.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="MicrosoftBclAsyncInterfacesComponent" Guid="{AAF0C801-9529-424B-B035-F5B998AE4CB2}">
+        <File Id="MicrosoftBclAsyncInterfacesFile"
+              Name="Microsoft.Bcl.AsyncInterfaces.dll"
+              Source="$(var.RunnerSourceDir)Microsoft.Bcl.AsyncInterfaces.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemBuffersComponent" Guid="{80B3C8E2-77B9-4669-824B-F260963FE590}">
+        <File Id="SystemBuffersFile"
+              Name="System.Buffers.dll"
+              Source="$(var.RunnerSourceDir)System.Buffers.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemDiagnosticsDiagnosticSourceComponent" Guid="{F0D6280E-2EC2-440C-B757-B6ED0936CF1F}">
+        <File Id="SystemDiagnosticsDiagnosticSourceFile"
+              Name="System.Diagnostics.DiagnosticSource.dll"
+              Source="$(var.RunnerSourceDir)System.Diagnostics.DiagnosticSource.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemIoHashingComponent" Guid="{6354468A-C724-4707-B307-4BA4DE9AE56C}">
+        <File Id="SystemIoHashingFile"
+              Name="System.IO.Hashing.dll"
+              Source="$(var.RunnerSourceDir)System.IO.Hashing.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemMemoryDataComponent" Guid="{D767842B-1B11-4D52-A182-076C1503FFA9}">
+        <File Id="SystemMemoryDataFile"
+              Name="System.Memory.Data.dll"
+              Source="$(var.RunnerSourceDir)System.Memory.Data.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemMemoryComponent" Guid="{13DC21FC-53D8-4551-B40D-EA040A4E40DB}">
+        <File Id="SystemMemoryFile"
+              Name="System.Memory.dll"
+              Source="$(var.RunnerSourceDir)System.Memory.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemNumericsVectorsComponent" Guid="{6FE32104-390C-42B3-AA71-B756675091A8}">
+        <File Id="SystemNumericsVectorsFile"
+              Name="System.Numerics.Vectors.dll"
+              Source="$(var.RunnerSourceDir)System.Numerics.Vectors.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemRuntimeCompilerServicesUnsafeComponent" Guid="{F47B5980-443E-431C-8DF2-93469AFA86AA}">
+        <File Id="SystemRuntimeCompilerServicesUnsafeFile"
+              Name="System.Runtime.CompilerServices.Unsafe.dll"
+              Source="$(var.RunnerSourceDir)System.Runtime.CompilerServices.Unsafe.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemTextEncodingsWebComponent" Guid="{3620E26D-124C-4E49-915D-A1E831207784}">
+        <File Id="SystemTextEncodingsWebFile"
+              Name="System.Text.Encodings.Web.dll"
+              Source="$(var.RunnerSourceDir)System.Text.Encodings.Web.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemTextJsonComponent" Guid="{7B128515-7FCE-471F-833D-841200F6ED14}">
+        <File Id="SystemTextJsonFile"
+              Name="System.Text.Json.dll"
+              Source="$(var.RunnerSourceDir)System.Text.Json.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemThreadingTasksExtensionsComponent" Guid="{76627F50-0DFF-407A-B9BE-065812F51E93}">
+        <File Id="SystemThreadingTasksExtensionsFile"
+              Name="System.Threading.Tasks.Extensions.dll"
+              Source="$(var.RunnerSourceDir)System.Threading.Tasks.Extensions.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemValueTupleComponent" Guid="{5DA9D7A5-9BFC-44CF-B72F-168CB99D6418}">
+        <File Id="SystemValueTupleFile"
+              Name="System.ValueTuple.dll"
+              Source="$(var.RunnerSourceDir)System.ValueTuple.dll"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
+      <Component Id="SoupActivityDllComponent" Guid="{2930DDC2-9D71-4939-A069-7492D029AB88}">
+        <File Id="SoupActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
+      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{8CE4AE06-F168-452B-B099-EC37A69B4004}">
+        <File Id="WorkflowDesignerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
       </Component>
     </DirectoryRef>
 

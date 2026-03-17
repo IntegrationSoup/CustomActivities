@@ -4,8 +4,10 @@
     <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
     <InstallerPlatform>x86</InstallerPlatform>
 
-    <PayloadSourceDir>$(MSBuildProjectDirectory)\..\HL7SoupEncryptionActivities\HL7SoupEncryptionActivities\bin\$(Configuration)\</PayloadSourceDir>
-    <MainAssemblyPath>$(PayloadSourceDir)HL7SoupEncryptionActivities.dll</MainAssemblyPath>
+    <ActivitySourceDir>$(MSBuildProjectDirectory)\..\HL7SoupEncryptionActivities\HL7SoupEncryptionActivities\bin\$(Configuration)\net48\</ActivitySourceDir>
+    <RunnerSourceDir>$(MSBuildProjectDirectory)\..\HL7SoupEncryptionActivities.Runner\bin\$(Configuration)\net48\</RunnerSourceDir>
+    <MainAssemblyPath>$(ActivitySourceDir)HL7SoupEncryptionActivities.dll</MainAssemblyPath>
+    <RunnerExecutablePath>$(RunnerSourceDir)EncryptionActivitiesRunner.exe</RunnerExecutablePath>
 
     <GeneratedInstallerVersionFile>$(BaseIntermediateOutputPath)$(Configuration)\GeneratedInstallerVersion.wxi</GeneratedInstallerVersionFile>
     <InstallerVersionCounterFile Condition="'$(InstallerVersionCounterFile)' == ''">$(LocalAppData)\Popokey\InstallerBuildCounters\EncryptionActivities.counter</InstallerVersionCounterFile>
@@ -13,7 +15,8 @@
 
     <DefineConstants>
       $(DefineConstants);
-      PayloadSourceDir=$(PayloadSourceDir);
+      ActivitySourceDir=$(ActivitySourceDir);
+      RunnerSourceDir=$(RunnerSourceDir);
       GeneratedInstallerVersionFile=$(MSBuildProjectDirectory)\$(GeneratedInstallerVersionFile)
     </DefineConstants>
   </PropertyGroup>
@@ -32,13 +35,20 @@
   <Target Name="ValidatePayload" BeforeTargets="BeforeBuild">
     <Error Condition="!Exists('$(MainAssemblyPath)')"
            Text="Missing staged file '$(MainAssemblyPath)'. Build HL7SoupEncryptionActivities before building the installer." />
+    <Error Condition="!Exists('$(RunnerExecutablePath)')"
+           Text="Missing staged file '$(RunnerExecutablePath)'. Build HL7SoupEncryptionActivities.Runner before building the installer." />
   </Target>
 
   <Target Name="SignPayloads"
           AfterTargets="ResolveReferences"
           Condition="'$(Configuration)' == 'Release'">
-    <Exec Condition="Exists('$(MainAssemblyPath)')"
-          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) &quot;$(MainAssemblyPath)&quot;" />
+    <ItemGroup>
+      <_Sign Include="$(MainAssemblyPath)" />
+      <_Sign Include="$(RunnerExecutablePath)" />
+    </ItemGroup>
+
+    <Exec Condition="'@(_Sign)' != ''"
+          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) @(_Sign->'&quot;%(Identity)&quot;', ' ')" />
   </Target>
 
   <Target Name="SignMsiOutput"

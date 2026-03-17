@@ -1,9 +1,7 @@
-﻿using Azure.Storage.Blobs;
 using HL7Soup.Integrations;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Text;
 
 namespace AzureActivities
@@ -14,26 +12,17 @@ namespace AzureActivities
     [Parameter("File Name", "Name to give your file in Blob Storage.", isRequired: true)]
     [InMessage(@"", TypeOfMessages.HL7)]
     [OutMessage(@"Code Executed Successfully", TypeOfMessages.Text)]
-    internal class BlobSender : CustomActivity
+    internal class BlobSender : AzureActivityBase
     {
         public override void Process(IWorkflowInstance workflowInstance, IActivityInstance activityInstance, Dictionary<string, string> parameters)
         {
-            string connectionString = parameters["Connection String"];
-            string containerName = parameters["Container Name"];
-            string containerLower = containerName.ToLower();
-            string fileName = parameters["File Name"];
-            string message = activityInstance.Message.Text;
-            byte[] byteArray = Encoding.ASCII.GetBytes(message);
-            MemoryStream stream = new MemoryStream(byteArray);
+            EnsureActivityInstanceReady(activityInstance);
 
-            BlobContainerClient container = new BlobContainerClient(connectionString, containerLower);
-            var createResponse = container.CreateIfNotExists();
-            if (createResponse != null && createResponse.GetRawResponse().Status == 201)
-                container.SetAccessPolicy(Azure.Storage.Blobs.Models.PublicAccessType.Blob);
+            AzureActivitySupport.BlobUploadRequest request = CreateRequest(parameters);
+            byte[] messageBytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(activityInstance.Message.Text ?? string.Empty);
+            AzureActivitySupport.BlobUploadResponse response = AzureActivitySupport.Upload(request, messageBytes);
 
-            BlobClient blob = container.GetBlobClient(fileName);
-            blob.DeleteIfExists(Azure.Storage.Blobs.Models.DeleteSnapshotsOption.IncludeSnapshots);
-            blob.Upload(stream);
+            activityInstance.ResponseMessage.SetText(response.Message ?? "Code Executed Successfully");
         }
     }
 }

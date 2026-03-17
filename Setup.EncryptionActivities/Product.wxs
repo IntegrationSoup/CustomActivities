@@ -41,7 +41,9 @@
     <StandardDirectory Id="ProgramFilesFolder">
       <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
         <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
-          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)">
+            <Directory Id="SERVERRUNNERFOLDER" Name="$(var.RunnerFolderName)" />
+          </Directory>
         </Directory>
         <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
           <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
@@ -58,45 +60,29 @@
              Level="1"
              AllowAdvertise="no"
              AllowAbsent="yes">
-      <ComponentGroupRef Id="PayloadComponents" />
+      <ComponentRef Id="ServerActivityDllComponent" />
+      <ComponentGroupRef Id="RunnerComponents" />
       <ComponentRef Id="ServerServiceRestartComponent" />
       <ComponentRef Id="LegacyServerServiceRestartComponent" />
+      <ComponentRef Id="SoupActivityDllComponent" />
+      <ComponentRef Id="WorkflowDesignerActivityDllComponent" />
     </Feature>
 
-    <ComponentGroup Id="PayloadComponents">
-      <ComponentRef Id="EncryptionActivitiesComponent" />
-      <ComponentRef Id="SystemConfigurationConfigurationManagerComponent" />
+    <ComponentGroup Id="RunnerComponents">
+      <ComponentRef Id="RunnerExecutableComponent" />
+      <ComponentRef Id="RunnerConfigComponent" />
     </ComponentGroup>
 
     <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
-      <Component Id="EncryptionActivitiesComponent"
-                 Guid="{45A6FAAF-66A8-4807-B4A6-C3C60FB6C918}">
-        <File Id="EncryptionActivitiesFile"
-              Name="HL7SoupEncryptionActivities.dll"
-              Source="$(var.PayloadSourceDir)HL7SoupEncryptionActivities.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyEncryptionActivitiesToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyEncryptionActivitiesToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
-      </Component>
-
-      <Component Id="SystemConfigurationConfigurationManagerComponent"
-                 Guid="{3DF8E97D-A6CF-4B2A-B1BC-B617859C5E01}">
-        <File Id="SystemConfigurationConfigurationManagerFile"
-              Name="System.Configuration.ConfigurationManager.dll"
-              Source="$(var.PayloadSourceDir)System.Configuration.ConfigurationManager.dll"
-              KeyPath="yes">
-          <CopyFile Id="CopyEncryptionSystemConfigurationConfigurationManagerToSoup"
-                    DestinationDirectory="SOUPCUSTOMLIBRARIESFOLDER" />
-          <CopyFile Id="CopyEncryptionSystemConfigurationConfigurationManagerToWorkflowDesigner"
-                    DestinationDirectory="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" />
-        </File>
+      <Component Id="ServerActivityDllComponent" Guid="{4A398481-5ABB-437D-8278-6A2ECB6281B2}">
+        <File Id="ServerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
       </Component>
 
       <Component Id="ServerServiceRestartComponent"
-                 Guid="{E4A6D6A4-1D6A-4CCF-B0D7-F4140F8D34C3}"
+                 Guid="{D8C614BB-07D0-4147-B65C-691D43675D32}"
                  Condition="INTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
                        Key="Software\Popokey\EncryptionActivities"
@@ -112,7 +98,7 @@
       </Component>
 
       <Component Id="LegacyServerServiceRestartComponent"
-                 Guid="{60DCE6D7-42B5-422A-B143-C2FC3E570DB4}"
+                 Guid="{F1E2E5DC-2B89-4DF0-A931-7E22E7854A3B}"
                  Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
                        Key="Software\Popokey\EncryptionActivities"
@@ -125,6 +111,40 @@
                         Stop="both"
                         Start="install"
                         Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SERVERRUNNERFOLDER">
+      <Component Id="RunnerExecutableComponent" Guid="{90FDE04B-5F42-48A3-89B1-796CABFCA25E}">
+        <File Id="RunnerExecutableFile"
+              Name="$(var.RunnerExecutableName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerExecutableName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="RunnerConfigComponent" Guid="{6513E570-8B75-4632-995E-25F16A554F1D}">
+        <File Id="RunnerConfigFile"
+              Name="$(var.RunnerConfigFileName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerConfigFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
+      <Component Id="SoupActivityDllComponent" Guid="{CE9E2503-CFA9-4D03-AAEF-99AA9F8768B4}">
+        <File Id="SoupActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
+      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{2F928DD4-06D8-489E-90F9-8436A3C8F37C}">
+        <File Id="WorkflowDesignerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
       </Component>
     </DirectoryRef>
 

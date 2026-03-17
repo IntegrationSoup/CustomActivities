@@ -38,6 +38,8 @@ $destinationsRequiringSubdirectories = @(
 )
 
 $subdirectoryIncludedExtensions = @(
+    ".config",
+    ".dll",
     ".exe"
 )
 
