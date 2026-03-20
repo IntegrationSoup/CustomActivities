@@ -109,6 +109,18 @@ foreach ($destination in $destinations) {
     }
 }
 
+if (Test-Path -LiteralPath (Join-Path -Path $sourcePath -ChildPath "AzureActivities.dll")) {
+    $sharedSettingsPath = Join-Path -Path $env:ProgramData -ChildPath "Popokey\SharedSettings"
+    $azureServiceBusFlagPath = Join-Path -Path $sharedSettingsPath -ChildPath "AzureServiceBusAvailable.txt"
+
+    if (-not (Test-Path -LiteralPath $sharedSettingsPath)) {
+        New-Item -ItemType Directory -Path $sharedSettingsPath -Force | Out-Null
+    }
+
+    Set-Content -LiteralPath $azureServiceBusFlagPath -Value "true" -Encoding ascii -NoNewline
+    Write-Host "Enabled Azure Service Bus activities."
+}
+
 try {
     $serviceName = "IntegrationSoupHostService"
     $service = Get-Service -Name $serviceName -ErrorAction Stop

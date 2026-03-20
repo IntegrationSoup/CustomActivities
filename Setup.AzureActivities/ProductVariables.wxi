@@ -1,6 +1,6 @@
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
   <?define ProductDisplayName = "Integration Soup Azure Activities Extension Library" ?>
-  <?define ProductDescription = "Installs the Azure extension library for Integration Soup." ?>
+  <?define ProductDescription = "Installs the Azure Blob Storage extension library and enables Azure Service Bus activities for Integration Soup." ?>
   <?define CompanyName = "Popokey" ?>
   <?define CompanyFullName = "Popokey Limited" ?>
   <?define Copyright = "Popokey Limited" ?>

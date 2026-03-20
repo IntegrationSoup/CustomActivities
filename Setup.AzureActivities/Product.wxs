@@ -54,6 +54,12 @@
       </Directory>
     </StandardDirectory>
 
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="POPOKEYCOMMONDATAFOLDER" Name="Popokey">
+        <Directory Id="SHAREDSETTINGSFOLDER" Name="SharedSettings" />
+      </Directory>
+    </StandardDirectory>
+
     <Feature Id="MainFeature"
              Title="$(var.ProductDisplayName)"
              Description="$(var.ProductDescription)"
@@ -61,6 +67,7 @@
              AllowAdvertise="no"
              AllowAbsent="yes">
       <ComponentRef Id="ServerActivityDllComponent" />
+      <ComponentRef Id="AzureServiceBusAvailableComponent" />
       <ComponentGroupRef Id="RunnerComponents" />
       <ComponentRef Id="ServerServiceRestartComponent" />
       <ComponentRef Id="LegacyServerServiceRestartComponent" />
@@ -126,6 +133,15 @@
                         Stop="both"
                         Start="install"
                         Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SHAREDSETTINGSFOLDER">
+      <Component Id="AzureServiceBusAvailableComponent" Guid="{44FC6014-8B3E-4758-8B3A-E717A730B47D}">
+        <File Id="AzureServiceBusAvailableFile"
+              Name="AzureServiceBusAvailable.txt"
+              Source="$(var.ProjectDir)AzureServiceBusAvailable.txt"
+              KeyPath="yes" />
       </Component>
     </DirectoryRef>
 
