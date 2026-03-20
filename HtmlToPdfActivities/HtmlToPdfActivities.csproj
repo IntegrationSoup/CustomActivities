@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
     <ProjectReference Include="..\..\HL7Soup\HL7Parser\HL7SoupIntegrations\HL7SoupIntegrations.csproj" />
   </ItemGroup>
 

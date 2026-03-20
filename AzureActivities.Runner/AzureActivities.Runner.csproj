@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.14.0" />
   </ItemGroup>
 

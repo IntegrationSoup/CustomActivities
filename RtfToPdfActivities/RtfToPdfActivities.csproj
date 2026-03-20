@@ -4,7 +4,7 @@
     <TargetFrameworks>net48;net6.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <RunnerProjectPath>..\SftpActivities.Runner\SftpActivities.Runner.csproj</RunnerProjectPath>
+    <RendererProjectPath>..\RtfToPdfActivities.Renderer\RtfToPdfActivities.Renderer.csproj</RendererProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,23 +21,23 @@
     </None>
   </ItemGroup>
 
-  <Target Name="BuildSftpRunner" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
+  <Target Name="BuildRtfToPdfRenderer" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
     <PropertyGroup>
-      <RunnerBuildOutputDirectory>$(MSBuildProjectDirectory)\..\SftpActivities.Runner\bin\$(Configuration)\net48\</RunnerBuildOutputDirectory>
-      <RunnerOutputDirectory>$(TargetDir)SftpActivitiesRunner\</RunnerOutputDirectory>
+      <RendererBuildOutputDirectory>$(MSBuildProjectDirectory)\..\RtfToPdfActivities.Renderer\bin\$(Configuration)\net48\</RendererBuildOutputDirectory>
+      <RendererOutputDirectory>$(TargetDir)RtfToPdfRenderer\</RendererOutputDirectory>
     </PropertyGroup>
     <MSBuild
-      Projects="$(RunnerProjectPath)"
+      Projects="$(RendererProjectPath)"
       Targets="Restore;Build"
       Properties="Configuration=$(Configuration);TargetFramework=net48" />
-    <RemoveDir Directories="$(RunnerOutputDirectory)" />
+    <RemoveDir Directories="$(RendererOutputDirectory)" />
     <ItemGroup>
-      <RunnerFiles Include="$(RunnerBuildOutputDirectory)**\*" />
+      <RendererFiles Include="$(RendererBuildOutputDirectory)**\*" />
     </ItemGroup>
-    <MakeDir Directories="$(RunnerOutputDirectory)" />
+    <MakeDir Directories="$(RendererOutputDirectory)" />
     <Copy
-      SourceFiles="@(RunnerFiles)"
-      DestinationFiles="@(RunnerFiles->'$(RunnerOutputDirectory)%(RecursiveDir)%(Filename)%(Extension)')"
+      SourceFiles="@(RendererFiles)"
+      DestinationFiles="@(RendererFiles->'$(RendererOutputDirectory)%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true" />
   </Target>
 

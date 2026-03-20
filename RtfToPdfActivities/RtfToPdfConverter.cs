@@ -5,19 +5,19 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 
-namespace HtmlToPdfActivities
+namespace RtfToPdfActivities
 {
-    [DisplayName("Convert HTML to PDF")]
-    [InMessage(@"<html><body><h1>Sample PDF</h1><p>This HTML will be rendered to PDF.</p></body></html>", TypeOfMessages.Text)]
+    [DisplayName("Convert RTF to PDF")]
+    [InMessage(@"{\rtf1\ansi\deff0{\fonttbl{\f0 Calibri;}}\f0\fs24 Sample RTF content.\par}", TypeOfMessages.Text)]
     [OutMessage(@"JVBERi0xLjQKJ...", TypeOfMessages.Binary)]
-    public class HtmlToPdfConverter : CustomActivity
+    public class RtfToPdfConverter : CustomActivity
     {
-        private const string RendererPathEnvironmentVariable = "HTMLTOPDF_RENDERER_PATH";
-        private const string RendererDirectoryName = "HtmlToPdfRenderer";
-        private const string RendererExecutableName = "HtmlToPdfRenderer.exe";
+        private const string RendererPathEnvironmentVariable = "RTFTOPDF_RENDERER_PATH";
+        private const string RendererDirectoryName = "RtfToPdfRenderer";
+        private const string RendererExecutableName = "RtfToPdfRenderer.exe";
         private const int RendererTimeoutMilliseconds = 180000;
 
-        private static readonly PersistentRunnerClient runnerClient = new PersistentRunnerClient("HTML-to-PDF renderer");
+        private static readonly PersistentRunnerClient runnerClient = new PersistentRunnerClient("RTF-to-PDF renderer");
 
         public override void Process(IWorkflowInstance workflowInstance, IActivityInstance activityInstance, Dictionary<string, string> parameters)
         {
@@ -36,25 +36,26 @@ namespace HtmlToPdfActivities
                 throw new InvalidOperationException("Error: Response Message not set.");
             }
 
-            string html = activityInstance.Message.Text ?? string.Empty;
-            byte[] pdfBytes = ConvertHtmlToPdf(html);
+            string rtf = activityInstance.Message.Text ?? string.Empty;
+            byte[] pdfBytes = ConvertRtfToPdf(rtf);
 
-            // HL7Soup binary messages are stored as base64 in the Text payload.
             activityInstance.ResponseMessage.SetText(Convert.ToBase64String(pdfBytes));
         }
 
-        private static byte[] ConvertHtmlToPdf(string html)
+        private static byte[] ConvertRtfToPdf(string rtf)
         {
             string rendererExecutablePath = ResolveRendererExecutablePath();
 
             try
             {
-                HtmlToPdfPipeResponse response = runnerClient.Invoke<HtmlToPdfPipeRequest, HtmlToPdfPipeResponse>(
+                RtfToPdfPipeResponse response = runnerClient.Invoke<RtfToPdfPipeRequest, RtfToPdfPipeResponse>(
                     rendererExecutablePath,
-                    "convert-html-to-pdf",
-                    new HtmlToPdfPipeRequest
+                    "convert-rtf-to-pdf",
+                    new RtfToPdfPipeRequest
                     {
-                        Html = string.IsNullOrWhiteSpace(html) ? "<html><body></body></html>" : html
+                        Rtf = string.IsNullOrWhiteSpace(rtf)
+                            ? @"{\rtf1\ansi\deff0{\fonttbl{\f0 Calibri;}}\f0\fs24 \par}"
+                            : rtf
                     },
                     RendererTimeoutMilliseconds);
 
@@ -68,7 +69,7 @@ namespace HtmlToPdfActivities
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    "The HTML-to-PDF renderer process failed. Renderer path: "
+                    "The RTF-to-PDF renderer process failed. Renderer path: "
                     + rendererExecutablePath
                     + "; "
                     + ex.Message,
@@ -79,31 +80,28 @@ namespace HtmlToPdfActivities
         private static string ResolveRendererExecutablePath()
         {
             return PersistentRunnerExecutableResolver.ResolveExecutablePath(
-                typeof(HtmlToPdfConverter),
+                typeof(RtfToPdfConverter),
                 RendererPathEnvironmentVariable,
                 RendererDirectoryName,
                 RendererExecutableName,
-                "HTML-to-PDF renderer");
+                "RTF-to-PDF renderer");
         }
 
         [DataContract]
-        private sealed class HtmlToPdfPipeRequest
+        private sealed class RtfToPdfPipeRequest
         {
             [DataMember(Order = 1)]
-            public string Html { get; set; }
+            public string Rtf { get; set; }
         }
 
         [DataContract]
-        private sealed class HtmlToPdfPipeResponse
+        private sealed class RtfToPdfPipeResponse
         {
             [DataMember(Order = 1)]
             public string PdfBase64 { get; set; }
 
             [DataMember(Order = 2)]
-            public string BrowserPath { get; set; }
-
-            [DataMember(Order = 3)]
-            public string HeadlessMode { get; set; }
+            public string LibreOfficePath { get; set; }
         }
     }
 }

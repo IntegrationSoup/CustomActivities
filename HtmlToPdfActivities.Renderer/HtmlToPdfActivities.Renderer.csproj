@@ -9,4 +9,8 @@
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

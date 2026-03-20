@@ -1,7 +1,9 @@
 using Amazon;
 using Amazon.S3;
 using Amazon.S3.Transfer;
+using Popokey.ExtensionRunners;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -10,12 +12,20 @@ namespace AmazonActivities.Runner
 {
     internal static class Program
     {
+        private static readonly Dictionary<string, IAmazonS3> s3ClientCache = new Dictionary<string, IAmazonS3>(StringComparer.Ordinal);
+
         private static int Main(string[] args)
         {
             S3UploadResponse response = null;
 
             try
             {
+                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                if (serverExitCode.HasValue)
+                {
+                    return serverExitCode.Value;
+                }
+
                 if (args.Length < 2)
                 {
                     Console.Error.WriteLine("Usage: AwsActivitiesRunner <requestPath> <responsePath>");
@@ -31,7 +41,7 @@ namespace AmazonActivities.Runner
                 }
 
                 S3UploadRequest request = DeserializeJson<S3UploadRequest>(requestPath);
-                response = Execute(request);
+                response = ExecuteFileRequest(request);
                 WriteResponse(responsePath, response);
                 return response.Success ? 0 : 1;
             }
@@ -60,28 +70,79 @@ namespace AmazonActivities.Runner
             }
         }
 
-        private static S3UploadResponse Execute(S3UploadRequest request)
+        private static string HandleServerRequest(string operation, string payloadJson)
         {
-            ValidateRequest(request);
+            if (!string.Equals(operation, "upload-s3", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Unsupported AWS runner operation '{operation}'.");
+            }
 
-            RegionEndpoint bucketRegion = RegionEndpoint.GetBySystemName(request.Region);
-            var credentials = new Amazon.Runtime.BasicAWSCredentials(request.AccessKeyId, request.SecretAccessKey);
-            using (IAmazonS3 s3Client = new AmazonS3Client(credentials, bucketRegion))
-            using (FileStream stream = File.OpenRead(request.LocalInputPath))
+            S3UploadPipeRequest request = PersistentRunnerJson.Deserialize<S3UploadPipeRequest>(payloadJson);
+            S3UploadPipeResponse response = ExecutePipeRequest(request);
+            return PersistentRunnerJson.Serialize(response);
+        }
+
+        private static S3UploadResponse ExecuteFileRequest(S3UploadRequest request)
+        {
+            ValidateFileRequest(request);
+
+            S3UploadPipeRequest pipeRequest = new S3UploadPipeRequest
+            {
+                BucketName = request.BucketName,
+                FileName = request.FileName,
+                Region = request.Region,
+                AccessKeyId = request.AccessKeyId,
+                SecretAccessKey = request.SecretAccessKey,
+                InputBase64 = Convert.ToBase64String(File.ReadAllBytes(request.LocalInputPath))
+            };
+
+            S3UploadPipeResponse pipeResponse = ExecutePipeRequest(pipeRequest);
+            return new S3UploadResponse
+            {
+                Success = true,
+                Message = pipeResponse.Message,
+                ObjectPath = pipeResponse.ObjectPath
+            };
+        }
+
+        private static S3UploadPipeResponse ExecutePipeRequest(S3UploadPipeRequest request)
+        {
+            ValidatePipeRequest(request);
+
+            IAmazonS3 s3Client = GetS3Client(request.Region, request.AccessKeyId, request.SecretAccessKey);
+            byte[] inputBytes = Convert.FromBase64String(request.InputBase64 ?? string.Empty);
+
+            using (MemoryStream stream = new MemoryStream(inputBytes, writable: false))
             {
                 TransferUtility fileTransferUtility = new TransferUtility(s3Client);
                 fileTransferUtility.Upload(stream, request.BucketName, request.FileName);
 
-                return new S3UploadResponse
+                return new S3UploadPipeResponse
                 {
-                    Success = true,
                     Message = "Code Execute Successfully",
                     ObjectPath = request.BucketName + "/" + request.FileName
                 };
             }
         }
 
-        private static void ValidateRequest(S3UploadRequest request)
+        private static IAmazonS3 GetS3Client(string region, string accessKeyId, string secretAccessKey)
+        {
+            string cacheKey = region + "\n" + accessKeyId + "\n" + secretAccessKey;
+            lock (s3ClientCache)
+            {
+                if (!s3ClientCache.TryGetValue(cacheKey, out IAmazonS3 client))
+                {
+                    RegionEndpoint bucketRegion = RegionEndpoint.GetBySystemName(region);
+                    var credentials = new Amazon.Runtime.BasicAWSCredentials(accessKeyId, secretAccessKey);
+                    client = new AmazonS3Client(credentials, bucketRegion);
+                    s3ClientCache[cacheKey] = client;
+                }
+
+                return client;
+            }
+        }
+
+        private static void ValidateFileRequest(S3UploadRequest request)
         {
             if (request == null)
             {
@@ -116,6 +177,39 @@ namespace AmazonActivities.Runner
             if (string.IsNullOrWhiteSpace(request.LocalInputPath) || !File.Exists(request.LocalInputPath))
             {
                 throw new FileNotFoundException("The local input file could not be found.", request?.LocalInputPath);
+            }
+        }
+
+        private static void ValidatePipeRequest(S3UploadPipeRequest request)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.BucketName))
+            {
+                throw new InvalidOperationException("Bucket Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.FileName))
+            {
+                throw new InvalidOperationException("File Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Region))
+            {
+                throw new InvalidOperationException("Region is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.AccessKeyId))
+            {
+                throw new InvalidOperationException("Access Key ID is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.SecretAccessKey))
+            {
+                throw new InvalidOperationException("Secret Access Key is required.");
             }
         }
 
@@ -175,6 +269,38 @@ namespace AmazonActivities.Runner
             public string Message { get; set; }
 
             [DataMember(Order = 3)]
+            public string ObjectPath { get; set; }
+        }
+
+        [DataContract]
+        private sealed class S3UploadPipeRequest
+        {
+            [DataMember(Order = 1)]
+            public string BucketName { get; set; }
+
+            [DataMember(Order = 2)]
+            public string FileName { get; set; }
+
+            [DataMember(Order = 3)]
+            public string Region { get; set; }
+
+            [DataMember(Order = 4)]
+            public string AccessKeyId { get; set; }
+
+            [DataMember(Order = 5)]
+            public string SecretAccessKey { get; set; }
+
+            [DataMember(Order = 6)]
+            public string InputBase64 { get; set; }
+        }
+
+        [DataContract]
+        private sealed class S3UploadPipeResponse
+        {
+            [DataMember(Order = 1)]
+            public string Message { get; set; }
+
+            [DataMember(Order = 2)]
             public string ObjectPath { get; set; }
         }
     }

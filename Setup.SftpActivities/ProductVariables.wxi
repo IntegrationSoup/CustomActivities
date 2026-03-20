@@ -1,0 +1,20 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup SFTP Activities Extension Library" ?>
+  <?define ProductDescription = "Installs the SFTP extension library for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define ActivityFileName = "SftpActivities.dll" ?>
+  <?define RunnerFolderName = "SftpActivitiesRunner" ?>
+  <?define RunnerExecutableName = "SftpActivitiesRunner.exe" ?>
+  <?define RunnerConfigFileName = "SftpActivitiesRunner.exe.config" ?>
+  <?define WinScpExecutableName = "WinSCP.exe" ?>
+  <?define WinScpNetAssemblyName = "WinSCPnet.dll" ?>
+  <?define UpgradeCode = "{C778FEB5-CB95-4EFB-BECD-480ADC096F91}" ?>
+</Include>

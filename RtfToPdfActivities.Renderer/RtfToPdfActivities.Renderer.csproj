@@ -4,20 +4,13 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>SftpActivitiesRunner</AssemblyName>
-    <RootNamespace>SftpActivities.Runner</RootNamespace>
+    <AssemblyName>RtfToPdfRenderer</AssemblyName>
+    <RootNamespace>RtfToPdfActivities.Renderer</RootNamespace>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
-    <PackageReference Include="WinSCP" Version="6.5.5" GeneratePathProperty="true" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="$(PkgWinSCP)\lib\net40\WinSCPnet.dll" Link="WinSCPnet.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

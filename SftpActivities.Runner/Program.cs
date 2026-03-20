@@ -1,3 +1,4 @@
+using Popokey.ExtensionRunners;
 using System;
 using System.IO;
 using System.Runtime.Serialization;
@@ -14,6 +15,12 @@ namespace SftpActivities.Runner
 
             try
             {
+                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                if (serverExitCode.HasValue)
+                {
+                    return serverExitCode.Value;
+                }
+
                 if (args.Length < 2)
                 {
                     Console.Error.WriteLine("Usage: SftpActivitiesRunner <requestPath> <responsePath>");
@@ -29,7 +36,7 @@ namespace SftpActivities.Runner
                 }
 
                 SftpCommandRequest request = DeserializeJson<SftpCommandRequest>(requestPath);
-                response = Execute(request);
+                response = ExecuteFileRequest(request);
                 WriteResponse(responsePath, response);
                 return response.Success ? 0 : 1;
             }
@@ -58,9 +65,58 @@ namespace SftpActivities.Runner
             }
         }
 
-        private static SftpCommandResponse Execute(SftpCommandRequest request)
+        private static string HandleServerRequest(string operation, string payloadJson)
         {
-            ValidateRequest(request);
+            SftpPipeRequest request = PersistentRunnerJson.Deserialize<SftpPipeRequest>(payloadJson);
+            SftpPipeResponse response = ExecutePipeRequest(request);
+            return PersistentRunnerJson.Serialize(response);
+        }
+
+        private static SftpCommandResponse ExecuteFileRequest(SftpCommandRequest request)
+        {
+            ValidateFileRequest(request);
+
+            SftpPipeRequest pipeRequest = new SftpPipeRequest
+            {
+                Operation = request.Operation,
+                HostName = request.HostName,
+                Port = request.Port,
+                UserName = request.UserName,
+                Password = request.Password,
+                PrivateKeyPath = request.PrivateKeyPath,
+                PrivateKeyPassphrase = request.PrivateKeyPassphrase,
+                SshHostKeyFingerprint = request.SshHostKeyFingerprint,
+                RemotePath = request.RemotePath,
+                CreateRemoteDirectory = request.CreateRemoteDirectory,
+                DeleteRemoteFileAfterDownload = request.DeleteRemoteFileAfterDownload,
+                InputBase64 = !string.IsNullOrWhiteSpace(request.LocalInputPath) ? Convert.ToBase64String(File.ReadAllBytes(request.LocalInputPath)) : null,
+                IncludeOutputBase64 = false
+            };
+
+            SftpPipeResponse pipeResponse = ExecutePipeRequest(pipeRequest);
+            if (string.Equals(request.Operation, "download", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(request.LocalOutputPath))
+                {
+                    throw new InvalidOperationException("LocalOutputPath is required for download operations.");
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(request.LocalOutputPath) ?? AppDomain.CurrentDomain.BaseDirectory);
+                File.WriteAllBytes(request.LocalOutputPath, Convert.FromBase64String(pipeResponse.OutputBase64 ?? string.Empty));
+            }
+
+            return new SftpCommandResponse
+            {
+                Success = true,
+                Message = pipeResponse.Message,
+                RemotePath = pipeResponse.RemotePath,
+                BytesTransferred = pipeResponse.BytesTransferred
+            };
+        }
+
+        private static SftpPipeResponse ExecutePipeRequest(SftpPipeRequest request)
+        {
+            ValidatePipeRequest(request);
 
             using (Session session = new Session())
             {
@@ -79,60 +135,76 @@ namespace SftpActivities.Runner
             }
         }
 
-        private static SftpCommandResponse Upload(Session session, SftpCommandRequest request)
+        private static SftpPipeResponse Upload(Session session, SftpPipeRequest request)
         {
-            if (!File.Exists(request.LocalInputPath))
+            string tempRoot = Path.Combine(Path.GetTempPath(), "SftpActivities.Runner", Guid.NewGuid().ToString("N"));
+            string localInputPath = Path.Combine(tempRoot, "upload.bin");
+
+            Directory.CreateDirectory(tempRoot);
+            try
             {
-                throw new FileNotFoundException($"Upload source file was not found: {request.LocalInputPath}", request.LocalInputPath);
+                byte[] inputBytes = Convert.FromBase64String(request.InputBase64 ?? string.Empty);
+                File.WriteAllBytes(localInputPath, inputBytes);
+
+                if (request.CreateRemoteDirectory)
+                {
+                    EnsureRemoteDirectoryExists(session, request.RemotePath);
+                }
+
+                TransferOptions options = CreateTransferOptions();
+                TransferOperationResult result = session.PutFiles(localInputPath, request.RemotePath, remove: false, options);
+                result.Check();
+
+                return new SftpPipeResponse
+                {
+                    Message = $"Uploaded {request.RemotePath}",
+                    RemotePath = request.RemotePath,
+                    BytesTransferred = inputBytes.LongLength
+                };
             }
-
-            if (request.CreateRemoteDirectory)
+            finally
             {
-                EnsureRemoteDirectoryExists(session, request.RemotePath);
+                TryDeleteDirectory(tempRoot);
             }
-
-            TransferOptions options = CreateTransferOptions();
-            TransferOperationResult result = session.PutFiles(request.LocalInputPath, request.RemotePath, remove: false, options);
-            result.Check();
-
-            long bytesTransferred = new FileInfo(request.LocalInputPath).Length;
-            return new SftpCommandResponse
-            {
-                Success = true,
-                Message = $"Uploaded {request.RemotePath}",
-                RemotePath = request.RemotePath,
-                BytesTransferred = bytesTransferred
-            };
         }
 
-        private static SftpCommandResponse Download(Session session, SftpCommandRequest request)
+        private static SftpPipeResponse Download(Session session, SftpPipeRequest request)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(request.LocalOutputPath) ?? AppDomain.CurrentDomain.BaseDirectory);
+            string tempRoot = Path.Combine(Path.GetTempPath(), "SftpActivities.Runner", Guid.NewGuid().ToString("N"));
+            string localOutputPath = Path.Combine(tempRoot, "download.bin");
 
-            TransferOptions options = CreateTransferOptions();
-            TransferOperationResult result = session.GetFiles(
-                request.RemotePath,
-                request.LocalOutputPath,
-                request.DeleteRemoteFileAfterDownload,
-                options);
-            result.Check();
-
-            if (!File.Exists(request.LocalOutputPath))
+            Directory.CreateDirectory(tempRoot);
+            try
             {
-                throw new InvalidOperationException($"The remote file was downloaded successfully but '{request.LocalOutputPath}' was not created.");
+                TransferOptions options = CreateTransferOptions();
+                TransferOperationResult result = session.GetFiles(
+                    request.RemotePath,
+                    localOutputPath,
+                    request.DeleteRemoteFileAfterDownload,
+                    options);
+                result.Check();
+
+                if (!File.Exists(localOutputPath))
+                {
+                    throw new InvalidOperationException($"The remote file was downloaded successfully but '{localOutputPath}' was not created.");
+                }
+
+                byte[] outputBytes = File.ReadAllBytes(localOutputPath);
+                return new SftpPipeResponse
+                {
+                    Message = $"Downloaded {request.RemotePath}",
+                    RemotePath = request.RemotePath,
+                    BytesTransferred = outputBytes.LongLength,
+                    OutputBase64 = request.IncludeOutputBase64 ? Convert.ToBase64String(outputBytes) : string.Empty
+                };
             }
-
-            long bytesTransferred = new FileInfo(request.LocalOutputPath).Length;
-            return new SftpCommandResponse
+            finally
             {
-                Success = true,
-                Message = $"Downloaded {request.RemotePath}",
-                RemotePath = request.RemotePath,
-                BytesTransferred = bytesTransferred
-            };
+                TryDeleteDirectory(tempRoot);
+            }
         }
 
-        private static SessionOptions BuildSessionOptions(SftpCommandRequest request)
+        private static SessionOptions BuildSessionOptions(SftpPipeRequest request)
         {
             SessionOptions options = new SessionOptions
             {
@@ -191,43 +263,18 @@ namespace SftpActivities.Runner
             return separatorIndex <= 0 ? string.Empty : normalizedPath.Substring(0, separatorIndex);
         }
 
-        private static void ValidateRequest(SftpCommandRequest request)
+        private static void ValidateFileRequest(SftpCommandRequest request)
         {
             if (request == null)
             {
                 throw new ArgumentNullException(nameof(request));
             }
 
-            if (string.IsNullOrWhiteSpace(request.HostName))
-            {
-                throw new InvalidOperationException("Host Name is required.");
-            }
-
-            if (string.IsNullOrWhiteSpace(request.UserName))
-            {
-                throw new InvalidOperationException("User Name is required.");
-            }
-
-            if (string.IsNullOrWhiteSpace(request.SshHostKeyFingerprint))
-            {
-                throw new InvalidOperationException("SSH Host Key Fingerprint is required.");
-            }
-
-            if (string.IsNullOrWhiteSpace(request.RemotePath))
-            {
-                throw new InvalidOperationException("Remote Path is required.");
-            }
-
-            if (string.IsNullOrWhiteSpace(request.Password) && string.IsNullOrWhiteSpace(request.PrivateKeyPath))
-            {
-                throw new InvalidOperationException("Provide either a Password or a Private Key Path.");
-            }
-
             if (string.Equals(request.Operation, "upload", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.IsNullOrWhiteSpace(request.LocalInputPath))
+                if (string.IsNullOrWhiteSpace(request.LocalInputPath) || !File.Exists(request.LocalInputPath))
                 {
-                    throw new InvalidOperationException("LocalInputPath is required for upload operations.");
+                    throw new FileNotFoundException("LocalInputPath is required for upload operations.", request?.LocalInputPath);
                 }
             }
             else if (string.Equals(request.Operation, "download", StringComparison.OrdinalIgnoreCase))
@@ -236,6 +283,54 @@ namespace SftpActivities.Runner
                 {
                     throw new InvalidOperationException("LocalOutputPath is required for download operations.");
                 }
+            }
+
+            ValidateSharedRequestFields(request.HostName, request.UserName, request.SshHostKeyFingerprint, request.RemotePath, request.Password, request.PrivateKeyPath);
+        }
+
+        private static void ValidatePipeRequest(SftpPipeRequest request)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            ValidateSharedRequestFields(request.HostName, request.UserName, request.SshHostKeyFingerprint, request.RemotePath, request.Password, request.PrivateKeyPath);
+
+            if (string.Equals(request.Operation, "upload", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(request.InputBase64))
+                {
+                    throw new InvalidOperationException("InputBase64 is required for upload operations.");
+                }
+            }
+        }
+
+        private static void ValidateSharedRequestFields(string hostName, string userName, string hostKeyFingerprint, string remotePath, string password, string privateKeyPath)
+        {
+            if (string.IsNullOrWhiteSpace(hostName))
+            {
+                throw new InvalidOperationException("Host Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                throw new InvalidOperationException("User Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(hostKeyFingerprint))
+            {
+                throw new InvalidOperationException("SSH Host Key Fingerprint is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(remotePath))
+            {
+                throw new InvalidOperationException("Remote Path is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(password) && string.IsNullOrWhiteSpace(privateKeyPath))
+            {
+                throw new InvalidOperationException("Provide either a Password or a Private Key Path.");
             }
         }
 
@@ -258,6 +353,23 @@ namespace SftpActivities.Runner
 
             throw new FileNotFoundException(
                 "WinSCP.exe could not be found beside the SFTP runner executable. Ensure the helper folder includes WinSCP.exe.");
+        }
+
+        private static void TryDeleteDirectory(string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                return;
+            }
+
+            try
+            {
+                Directory.Delete(path, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup only.
+            }
         }
 
         private static void WriteResponse(string responsePath, SftpCommandResponse response)
@@ -341,6 +453,65 @@ namespace SftpActivities.Runner
 
             [DataMember(Order = 4)]
             public long BytesTransferred { get; set; }
+        }
+
+        [DataContract]
+        private sealed class SftpPipeRequest
+        {
+            [DataMember(Order = 1)]
+            public string Operation { get; set; }
+
+            [DataMember(Order = 2)]
+            public string HostName { get; set; }
+
+            [DataMember(Order = 3)]
+            public int Port { get; set; }
+
+            [DataMember(Order = 4)]
+            public string UserName { get; set; }
+
+            [DataMember(Order = 5)]
+            public string Password { get; set; }
+
+            [DataMember(Order = 6)]
+            public string PrivateKeyPath { get; set; }
+
+            [DataMember(Order = 7)]
+            public string PrivateKeyPassphrase { get; set; }
+
+            [DataMember(Order = 8)]
+            public string SshHostKeyFingerprint { get; set; }
+
+            [DataMember(Order = 9)]
+            public string RemotePath { get; set; }
+
+            [DataMember(Order = 10)]
+            public bool CreateRemoteDirectory { get; set; }
+
+            [DataMember(Order = 11)]
+            public bool DeleteRemoteFileAfterDownload { get; set; }
+
+            [DataMember(Order = 12)]
+            public string InputBase64 { get; set; }
+
+            [DataMember(Order = 13)]
+            public bool IncludeOutputBase64 { get; set; }
+        }
+
+        [DataContract]
+        private sealed class SftpPipeResponse
+        {
+            [DataMember(Order = 1)]
+            public string Message { get; set; }
+
+            [DataMember(Order = 2)]
+            public string RemotePath { get; set; }
+
+            [DataMember(Order = 3)]
+            public long BytesTransferred { get; set; }
+
+            [DataMember(Order = 4)]
+            public string OutputBase64 { get; set; }
         }
     }
 }

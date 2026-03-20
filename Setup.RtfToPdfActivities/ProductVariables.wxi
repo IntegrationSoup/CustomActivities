@@ -1,0 +1,18 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup RTF to PDF Extension Library" ?>
+  <?define ProductDescription = "Installs the RTF to PDF extension library for Integration Soup. Requires LibreOffice on the Integration Soup server." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define ActivityFileName = "RtfToPdfActivities.dll" ?>
+  <?define RendererFolderName = "RtfToPdfRenderer" ?>
+  <?define RendererExecutableName = "RtfToPdfRenderer.exe" ?>
+  <?define RendererConfigFileName = "RtfToPdfRenderer.exe.config" ?>
+  <?define UpgradeCode = "{8CC8A5E2-1D48-4266-B285-D5E9B33CF85A}" ?>
+</Include>

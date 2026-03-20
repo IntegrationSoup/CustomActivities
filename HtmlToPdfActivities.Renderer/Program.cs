@@ -1,7 +1,10 @@
+using Popokey.ExtensionRunners;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,34 +15,21 @@ namespace HtmlToPdfActivities.Renderer
         private const string BrowserPathEnvironmentVariable = "HTMLTOPDF_BROWSER_PATH";
         private const int BrowserTimeoutMilliseconds = 120000;
 
+        private static readonly object browserPreferenceGate = new object();
+        private static string preferredBrowserPath;
+        private static string preferredHeadlessMode;
+
         private static int Main(string[] args)
         {
             try
             {
-                if (args.Length < 2)
+                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                if (serverExitCode.HasValue)
                 {
-                    Console.Error.WriteLine("Usage: HtmlToPdfRenderer <inputHtmlPath> <outputPdfPath>");
-                    return 2;
+                    return serverExitCode.Value;
                 }
 
-                string inputHtmlPath = Path.GetFullPath(args[0]);
-                string outputPdfPath = Path.GetFullPath(args[1]);
-                if (!File.Exists(inputHtmlPath))
-                {
-                    Console.Error.WriteLine($"Input HTML file was not found: {inputHtmlPath}");
-                    return 3;
-                }
-
-                Directory.CreateDirectory(Path.GetDirectoryName(outputPdfPath) ?? AppDomain.CurrentDomain.BaseDirectory);
-
-                BrowserRunResult result = ConvertHtmlToPdf(inputHtmlPath, outputPdfPath);
-                if (result.Success)
-                {
-                    return 0;
-                }
-
-                Console.Error.WriteLine(FormatBrowserFailure(result.BrowserExecutablePath, result));
-                return 1;
+                return RunOneShot(args);
             }
             catch (Exception ex)
             {
@@ -48,37 +38,183 @@ namespace HtmlToPdfActivities.Renderer
             }
         }
 
-        private static BrowserRunResult ConvertHtmlToPdf(string inputHtmlPath, string outputPdfPath)
+        private static int RunOneShot(string[] args)
         {
-            string browserExecutablePath = ResolveBrowserExecutablePath();
+            if (args.Length < 2)
+            {
+                Console.Error.WriteLine("Usage: HtmlToPdfRenderer <inputHtmlPath> <outputPdfPath>");
+                return 2;
+            }
+
+            string inputHtmlPath = Path.GetFullPath(args[0]);
+            string outputPdfPath = Path.GetFullPath(args[1]);
+            if (!File.Exists(inputHtmlPath))
+            {
+                Console.Error.WriteLine($"Input HTML file was not found: {inputHtmlPath}");
+                return 3;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPdfPath) ?? AppDomain.CurrentDomain.BaseDirectory);
+
+            HtmlToPdfPipeResponse response = ConvertHtmlToPdf(File.ReadAllText(inputHtmlPath), includePdfBase64: false, outputPdfPath);
+            if (!File.Exists(outputPdfPath))
+            {
+                Console.Error.WriteLine($"The HTML-to-PDF renderer completed without creating '{outputPdfPath}'.");
+                return 1;
+            }
+
+            return response != null ? 0 : 1;
+        }
+
+        private static string HandleServerRequest(string operation, string payloadJson)
+        {
+            if (!string.Equals(operation, "convert-html-to-pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Unsupported HTML-to-PDF operation '{operation}'.");
+            }
+
+            HtmlToPdfPipeRequest request = PersistentRunnerJson.Deserialize<HtmlToPdfPipeRequest>(payloadJson);
+            HtmlToPdfPipeResponse response = ConvertHtmlToPdf(request?.Html ?? string.Empty, includePdfBase64: true, outputPdfPath: null);
+            return PersistentRunnerJson.Serialize(response);
+        }
+
+        private static HtmlToPdfPipeResponse ConvertHtmlToPdf(string html, bool includePdfBase64, string outputPdfPath)
+        {
             string tempRoot = Path.Combine(Path.GetTempPath(), "HtmlToPdfActivities.Renderer", Guid.NewGuid().ToString("N"));
-            string profilePath = Path.Combine(tempRoot, "profile");
-            string fileUri = new Uri(inputHtmlPath).AbsoluteUri;
-            BrowserRunResult lastFailure = null;
+            string htmlPath = Path.Combine(tempRoot, "input.html");
+            string pdfPath = outputPdfPath ?? Path.Combine(tempRoot, "output.pdf");
 
             Directory.CreateDirectory(tempRoot);
             try
             {
-                foreach (string headlessMode in new[] { "--headless=new", "--headless" })
+                File.WriteAllText(
+                    htmlPath,
+                    string.IsNullOrWhiteSpace(html) ? "<html><body></body></html>" : html,
+                    new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+                BrowserRunResult result = PrintToPdf(htmlPath, pdfPath);
+                if (!result.Success)
                 {
-                    BrowserRunResult result = RunBrowserPrintToPdf(browserExecutablePath, profilePath, outputPdfPath, fileUri, headlessMode);
-                    if (result.Success)
-                    {
-                        return result;
-                    }
-
-                    lastFailure = result;
-
-                    TryDeleteFile(outputPdfPath);
-                    RecreateDirectory(profilePath);
+                    throw new InvalidOperationException(FormatBrowserFailure(result.BrowserExecutablePath, result));
                 }
+
+                if (!File.Exists(pdfPath) || new FileInfo(pdfPath).Length == 0)
+                {
+                    throw new InvalidOperationException($"The browser completed without creating '{pdfPath}'.");
+                }
+
+                return new HtmlToPdfPipeResponse
+                {
+                    BrowserPath = result.BrowserExecutablePath,
+                    HeadlessMode = result.HeadlessMode,
+                    PdfBase64 = includePdfBase64 ? Convert.ToBase64String(File.ReadAllBytes(pdfPath)) : string.Empty
+                };
             }
             finally
             {
                 TryDeleteDirectory(tempRoot);
             }
+        }
 
-            return lastFailure ?? BrowserRunResult.Failed(browserExecutablePath, "--headless", null, string.Empty, string.Empty, "The browser did not produce a PDF.");
+        private static BrowserRunResult PrintToPdf(string inputHtmlPath, string outputPdfPath)
+        {
+            string fileUri = new Uri(inputHtmlPath).AbsoluteUri;
+            string tempProfileRoot = Path.Combine(Path.GetTempPath(), "HtmlToPdfActivities.Renderer.Profile", Guid.NewGuid().ToString("N"));
+            BrowserRunResult lastFailure = null;
+
+            Directory.CreateDirectory(tempProfileRoot);
+            try
+            {
+                foreach (BrowserAttempt attempt in GetOrderedBrowserAttempts())
+                {
+                    string profilePath = Path.Combine(tempProfileRoot, Guid.NewGuid().ToString("N"));
+                    BrowserRunResult result = RunBrowserPrintToPdf(
+                        attempt.BrowserPath,
+                        profilePath,
+                        outputPdfPath,
+                        fileUri,
+                        attempt.HeadlessMode);
+
+                    if (result.Success)
+                    {
+                        RememberSuccessfulAttempt(result.BrowserExecutablePath, result.HeadlessMode);
+                        return result;
+                    }
+
+                    lastFailure = result;
+                    TryDeleteFile(outputPdfPath);
+                }
+            }
+            finally
+            {
+                TryDeleteDirectory(tempProfileRoot);
+            }
+
+            return lastFailure ?? BrowserRunResult.Failed(string.Empty, "--headless", null, string.Empty, string.Empty, "The browser did not produce a PDF.");
+        }
+
+        private static IEnumerable<BrowserAttempt> GetOrderedBrowserAttempts()
+        {
+            List<string> browserCandidates = ResolveBrowserExecutablePaths();
+            string preferredPathSnapshot;
+            string preferredHeadlessSnapshot;
+
+            lock (browserPreferenceGate)
+            {
+                preferredPathSnapshot = preferredBrowserPath;
+                preferredHeadlessSnapshot = preferredHeadlessMode;
+            }
+
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrWhiteSpace(preferredPathSnapshot) && browserCandidates.Contains(preferredPathSnapshot, StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (BrowserAttempt preferredAttempt in BuildAttemptsForBrowser(preferredPathSnapshot, preferredHeadlessSnapshot))
+                {
+                    string key = preferredAttempt.BrowserPath + "|" + preferredAttempt.HeadlessMode;
+                    if (seen.Add(key))
+                    {
+                        yield return preferredAttempt;
+                    }
+                }
+            }
+
+            foreach (string browserPath in browserCandidates)
+            {
+                foreach (BrowserAttempt attempt in BuildAttemptsForBrowser(browserPath, null))
+                {
+                    string key = attempt.BrowserPath + "|" + attempt.HeadlessMode;
+                    if (seen.Add(key))
+                    {
+                        yield return attempt;
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<BrowserAttempt> BuildAttemptsForBrowser(string browserPath, string preferredMode)
+        {
+            if (!string.IsNullOrWhiteSpace(preferredMode))
+            {
+                yield return new BrowserAttempt(browserPath, preferredMode);
+            }
+
+            foreach (string headlessMode in new[] { "--headless=new", "--headless=old", "--headless" })
+            {
+                if (!string.Equals(headlessMode, preferredMode, StringComparison.OrdinalIgnoreCase))
+                {
+                    yield return new BrowserAttempt(browserPath, headlessMode);
+                }
+            }
+        }
+
+        private static void RememberSuccessfulAttempt(string browserPath, string headlessMode)
+        {
+            lock (browserPreferenceGate)
+            {
+                preferredBrowserPath = browserPath;
+                preferredHeadlessMode = headlessMode;
+            }
         }
 
         private static BrowserRunResult RunBrowserPrintToPdf(string browserExecutablePath, string profilePath, string outputPdfPath, string inputUri, string headlessMode)
@@ -155,62 +291,13 @@ namespace HtmlToPdfActivities.Renderer
                 "--disable-dev-shm-usage",
                 $"--user-data-dir={profilePath}",
                 "--no-pdf-header-footer",
+                "--print-to-pdf-no-header",
                 $"--print-to-pdf={outputPdfPath}",
                 "--virtual-time-budget=10000",
                 inputUri
             };
 
-            return string.Join(" ", arguments.Select(QuoteArgument));
-        }
-
-        private static string QuoteArgument(string argument)
-        {
-            if (string.IsNullOrEmpty(argument))
-            {
-                return "\"\"";
-            }
-
-            if (!argument.Any(ch => char.IsWhiteSpace(ch) || ch == '"'))
-            {
-                return argument;
-            }
-
-            StringBuilder builder = new StringBuilder(argument.Length + 2);
-            builder.Append('"');
-
-            int backslashCount = 0;
-            foreach (char character in argument)
-            {
-                if (character == '\\')
-                {
-                    backslashCount++;
-                    continue;
-                }
-
-                if (character == '"')
-                {
-                    builder.Append('\\', backslashCount * 2 + 1);
-                    builder.Append(character);
-                    backslashCount = 0;
-                    continue;
-                }
-
-                if (backslashCount > 0)
-                {
-                    builder.Append('\\', backslashCount);
-                    backslashCount = 0;
-                }
-
-                builder.Append(character);
-            }
-
-            if (backslashCount > 0)
-            {
-                builder.Append('\\', backslashCount * 2);
-            }
-
-            builder.Append('"');
-            return builder.ToString();
+            return string.Join(" ", arguments.Select(PersistentRunnerCommandLine.QuoteArgument));
         }
 
         private static string SafeGetTaskResult(Task<string> task)
@@ -218,7 +305,7 @@ namespace HtmlToPdfActivities.Renderer
             return task.Status == TaskStatus.RanToCompletion ? task.Result : string.Empty;
         }
 
-        private static string ResolveBrowserExecutablePath()
+        private static List<string> ResolveBrowserExecutablePaths()
         {
             string configuredPath = Environment.GetEnvironmentVariable(BrowserPathEnvironmentVariable);
             if (!string.IsNullOrWhiteSpace(configuredPath))
@@ -226,7 +313,7 @@ namespace HtmlToPdfActivities.Renderer
                 string fullConfiguredPath = Path.GetFullPath(configuredPath);
                 if (File.Exists(fullConfiguredPath))
                 {
-                    return fullConfiguredPath;
+                    return new List<string> { fullConfiguredPath };
                 }
 
                 throw new FileNotFoundException(
@@ -252,16 +339,22 @@ namespace HtmlToPdfActivities.Renderer
                 Path.Combine(localApplicationData, "Microsoft", "Edge", "Application", "msedge.exe")
             };
 
+            List<string> resolvedPaths = new List<string>();
             foreach (string candidatePath in candidatePaths)
             {
-                if (!string.IsNullOrEmpty(candidatePath) && File.Exists(candidatePath))
+                if (!string.IsNullOrEmpty(candidatePath) && File.Exists(candidatePath) && !resolvedPaths.Contains(candidatePath, StringComparer.OrdinalIgnoreCase))
                 {
-                    return candidatePath;
+                    resolvedPaths.Add(candidatePath);
                 }
             }
 
-            throw new FileNotFoundException(
-                $"A compatible Chrome, Edge, or Chromium executable could not be found. Install Chrome or Edge, place the browser beside the renderer executable, or set {BrowserPathEnvironmentVariable}.");
+            if (resolvedPaths.Count == 0)
+            {
+                throw new FileNotFoundException(
+                    $"A compatible Chrome, Edge, or Chromium executable could not be found. Install Chrome or Edge, place the browser beside the renderer executable, or set {BrowserPathEnvironmentVariable}.");
+            }
+
+            return resolvedPaths;
         }
 
         private static string FormatBrowserFailure(string browserExecutablePath, BrowserRunResult failure)
@@ -285,6 +378,11 @@ namespace HtmlToPdfActivities.Renderer
                 message.Append("; reason: ").Append(failure.Reason);
             }
 
+            if (LooksLikeEdgeLocalSystemIssue(browserExecutablePath, failure))
+            {
+                message.Append("; note: Edge headless PDF rendering can fail when Integration Soup runs under the LocalSystem service account. Running the service as a dedicated user account or switching HTMLTOPDF_BROWSER_PATH to Chrome is recommended.");
+            }
+
             if (!string.IsNullOrWhiteSpace(failure.StandardError))
             {
                 message.Append("; stderr: ").Append(TrimForMessage(failure.StandardError));
@@ -301,6 +399,33 @@ namespace HtmlToPdfActivities.Renderer
         {
             string trimmed = text.Trim();
             return trimmed.Length <= 500 ? trimmed : trimmed.Substring(0, 500) + "...";
+        }
+
+        private static bool LooksLikeEdgeLocalSystemIssue(string browserExecutablePath, BrowserRunResult failure)
+        {
+            if (failure == null)
+            {
+                return false;
+            }
+
+            string browserPath = browserExecutablePath ?? string.Empty;
+            if (browserPath.IndexOf("msedge", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return false;
+            }
+
+            string userName = Environment.UserName ?? string.Empty;
+            string domainName = Environment.UserDomainName ?? string.Empty;
+            bool isLocalSystem = userName.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase)
+                || domainName.Equals("NT AUTHORITY", StringComparison.OrdinalIgnoreCase);
+
+            if (!isLocalSystem)
+            {
+                return false;
+            }
+
+            return !failure.Success
+                && string.Equals(failure.Reason, "The browser exited without creating a PDF file.", StringComparison.OrdinalIgnoreCase);
         }
 
         private static void RecreateDirectory(string path)
@@ -356,6 +481,38 @@ namespace HtmlToPdfActivities.Renderer
             {
                 // Best-effort cleanup only.
             }
+        }
+
+        private sealed class BrowserAttempt
+        {
+            internal BrowserAttempt(string browserPath, string headlessMode)
+            {
+                BrowserPath = browserPath;
+                HeadlessMode = headlessMode;
+            }
+
+            internal string BrowserPath { get; }
+            internal string HeadlessMode { get; }
+        }
+
+        [DataContract]
+        private sealed class HtmlToPdfPipeRequest
+        {
+            [DataMember(Order = 1)]
+            public string Html { get; set; }
+        }
+
+        [DataContract]
+        private sealed class HtmlToPdfPipeResponse
+        {
+            [DataMember(Order = 1)]
+            public string PdfBase64 { get; set; }
+
+            [DataMember(Order = 2)]
+            public string BrowserPath { get; set; }
+
+            [DataMember(Order = 3)]
+            public string HeadlessMode { get; set; }
         }
 
         private sealed class BrowserRunResult

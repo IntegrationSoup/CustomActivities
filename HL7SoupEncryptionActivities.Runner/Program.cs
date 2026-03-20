@@ -1,3 +1,4 @@
+using Popokey.ExtensionRunners;
 using System;
 using System.IO;
 using System.Runtime.Serialization;
@@ -17,6 +18,12 @@ namespace HL7SoupEncryptionActivities.Runner
 
             try
             {
+                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                if (serverExitCode.HasValue)
+                {
+                    return serverExitCode.Value;
+                }
+
                 if (args.Length < 2)
                 {
                     Console.Error.WriteLine("Usage: EncryptionActivitiesRunner <requestPath> <responsePath>");
@@ -32,7 +39,7 @@ namespace HL7SoupEncryptionActivities.Runner
                 }
 
                 EncryptionRequest request = DeserializeJson<EncryptionRequest>(requestPath);
-                response = Execute(request);
+                response = ExecuteFileRequest(request);
                 WriteResponse(responsePath, response);
                 return response.Success ? 0 : 1;
             }
@@ -61,30 +68,58 @@ namespace HL7SoupEncryptionActivities.Runner
             }
         }
 
-        private static EncryptionResponse Execute(EncryptionRequest request)
+        private static string HandleServerRequest(string operation, string payloadJson)
         {
-            ValidateRequest(request);
+            if (!string.Equals(operation, "transform-text", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Unsupported encryption operation '{operation}'.");
+            }
+
+            EncryptionPipeRequest request = PersistentRunnerJson.Deserialize<EncryptionPipeRequest>(payloadJson);
+            EncryptionPipeResponse response = ExecutePipeRequest(request);
+            return PersistentRunnerJson.Serialize(response);
+        }
+
+        private static EncryptionResponse ExecuteFileRequest(EncryptionRequest request)
+        {
+            ValidateFileRequest(request);
 
             string inputText = File.ReadAllText(request.InputPath, Encoding.UTF8);
-            string outputText;
+            EncryptionPipeResponse pipeResponse = ExecutePipeRequest(new EncryptionPipeRequest
+            {
+                Operation = request.Operation,
+                EncryptionKey = request.EncryptionKey,
+                InputText = inputText
+            });
 
+            File.WriteAllText(request.OutputPath, pipeResponse.OutputText ?? string.Empty, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            return new EncryptionResponse
+            {
+                Success = true,
+                Message = "Completed"
+            };
+        }
+
+        private static EncryptionPipeResponse ExecutePipeRequest(EncryptionPipeRequest request)
+        {
+            ValidatePipeRequest(request);
+
+            string outputText;
             switch ((request.Operation ?? string.Empty).Trim().ToLowerInvariant())
             {
                 case "encrypt":
-                    outputText = Encrypt(inputText, request.EncryptionKey);
+                    outputText = Encrypt(request.InputText ?? string.Empty, request.EncryptionKey);
                     break;
                 case "decrypt":
-                    outputText = Decrypt(inputText, request.EncryptionKey);
+                    outputText = Decrypt(request.InputText ?? string.Empty, request.EncryptionKey);
                     break;
                 default:
                     throw new InvalidOperationException($"Unsupported encryption operation '{request.Operation}'.");
             }
 
-            File.WriteAllText(request.OutputPath, outputText, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            return new EncryptionResponse
+            return new EncryptionPipeResponse
             {
-                Success = true,
-                Message = "Completed"
+                OutputText = outputText
             };
         }
 
@@ -130,7 +165,7 @@ namespace HL7SoupEncryptionActivities.Runner
             }
         }
 
-        private static void ValidateRequest(EncryptionRequest request)
+        private static void ValidateFileRequest(EncryptionRequest request)
         {
             if (request == null)
             {
@@ -155,6 +190,24 @@ namespace HL7SoupEncryptionActivities.Runner
             if (string.IsNullOrWhiteSpace(request.OutputPath))
             {
                 throw new InvalidOperationException("OutputPath is required.");
+            }
+        }
+
+        private static void ValidatePipeRequest(EncryptionPipeRequest request)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Operation))
+            {
+                throw new InvalidOperationException("Operation is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.EncryptionKey))
+            {
+                throw new InvalidOperationException("Encryption Key is required.");
             }
         }
 
@@ -206,6 +259,26 @@ namespace HL7SoupEncryptionActivities.Runner
 
             [DataMember(Order = 2)]
             public string Message { get; set; }
+        }
+
+        [DataContract]
+        private sealed class EncryptionPipeRequest
+        {
+            [DataMember(Order = 1)]
+            public string Operation { get; set; }
+
+            [DataMember(Order = 2)]
+            public string EncryptionKey { get; set; }
+
+            [DataMember(Order = 3)]
+            public string InputText { get; set; }
+        }
+
+        [DataContract]
+        private sealed class EncryptionPipeResponse
+        {
+            [DataMember(Order = 1)]
+            public string OutputText { get; set; }
         }
     }
 }
