@@ -8,7 +8,7 @@ namespace HL7SoupEncryptionActivities
     [Parameter("Encryption Key", "The key used to encrypt and decrypt the message>", isRequired: true)]
     [InMessage(@"", TypeOfMessages.Text)]
     [OutMessage(@"Decrypted Text", TypeOfMessages.Text)]
-    internal class DecryptMessage : EncryptionActivityBase
+    public class DecryptMessage : EncryptionActivityBase
     {
         public override void Process(IWorkflowInstance workflowInstance, IActivityInstance activityInstance, Dictionary<string, string> parameters)
         {

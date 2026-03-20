@@ -5,7 +5,7 @@ using System.ComponentModel;
 
 namespace SftpActivities
 {
-    [DisplayName("Download SFTP")]
+    [DisplayName("SFTP Download")]
     [Parameter("Host Name", "SFTP server host name.", isRequired: true)]
     [Parameter("Port", "SFTP server port. Defaults to 22 when left blank.", isRequired: false)]
     [Parameter("User Name", "SFTP login user name.", isRequired: true)]

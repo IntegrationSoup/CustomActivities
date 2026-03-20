@@ -6,9 +6,9 @@ using System.Runtime.Serialization;
 
 namespace AzureActivities
 {
-    internal abstract class AzureActivityBase : CustomActivity
+    public abstract class AzureActivityBase : CustomActivity
     {
-        protected static AzureActivitySupport.BlobUploadRequest CreateRequest(Dictionary<string, string> parameters)
+        private protected static AzureActivitySupport.BlobUploadRequest CreateRequest(Dictionary<string, string> parameters)
         {
             if (parameters == null)
             {
@@ -23,7 +23,7 @@ namespace AzureActivities
             };
         }
 
-        protected static void EnsureActivityInstanceReady(IActivityInstance activityInstance)
+        private protected static void EnsureActivityInstanceReady(IActivityInstance activityInstance)
         {
             if (activityInstance == null)
             {

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace AmazonActivities
 {
-    [DisplayName("Send S3")]
+    [DisplayName("AWS S3 Upload")]
     [Parameter("Bucket Name", "Name of target AWS S3 Bucket", isRequired: true)]
     [Parameter("File Name", "Name to give your file in S3", isRequired: true)]
     [Parameter("Region", "Region your S3 Bucket is located in. NOTE: Must be in System Name format (eg: us-west-1)", isRequired: true)]
@@ -14,7 +14,7 @@ namespace AmazonActivities
     [Parameter("Secret Access Key", "Your AWS Secret Access Key", isRequired: true)]
     [InMessage(@"", TypeOfMessages.HL7)]
     [OutMessage(@"Code Execute Successfully", TypeOfMessages.Text)]
-    internal class S3Sender : AwsActivityBase
+    public class S3Sender : AwsActivityBase
     {
         public override void Process(IWorkflowInstance workflowInstance, IActivityInstance activityInstance, Dictionary<string, string> parameters)
         {

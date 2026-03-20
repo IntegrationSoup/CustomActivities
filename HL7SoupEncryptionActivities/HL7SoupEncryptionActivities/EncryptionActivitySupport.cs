@@ -6,9 +6,9 @@ using System.Runtime.Serialization;
 
 namespace HL7SoupEncryptionActivities
 {
-    internal abstract class EncryptionActivityBase : CustomActivity
+    public abstract class EncryptionActivityBase : CustomActivity
     {
-        protected static EncryptionActivitySupport.EncryptionRequest CreateRequest(Dictionary<string, string> parameters, string operation)
+        private protected static EncryptionActivitySupport.EncryptionRequest CreateRequest(Dictionary<string, string> parameters, string operation)
         {
             if (parameters == null)
             {
@@ -27,7 +27,7 @@ namespace HL7SoupEncryptionActivities
             };
         }
 
-        protected static void EnsureActivityInstanceReady(IActivityInstance activityInstance)
+        private protected static void EnsureActivityInstanceReady(IActivityInstance activityInstance)
         {
             if (activityInstance == null)
             {

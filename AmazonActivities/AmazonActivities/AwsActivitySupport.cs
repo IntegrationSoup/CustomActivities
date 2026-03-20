@@ -6,9 +6,9 @@ using System.Runtime.Serialization;
 
 namespace AmazonActivities
 {
-    internal abstract class AwsActivityBase : CustomActivity
+    public abstract class AwsActivityBase : CustomActivity
     {
-        protected static AwsActivitySupport.S3UploadRequest CreateRequest(Dictionary<string, string> parameters)
+        private protected static AwsActivitySupport.S3UploadRequest CreateRequest(Dictionary<string, string> parameters)
         {
             if (parameters == null)
             {
@@ -25,7 +25,7 @@ namespace AmazonActivities
             };
         }
 
-        protected static void EnsureActivityInstanceReady(IActivityInstance activityInstance)
+        private protected static void EnsureActivityInstanceReady(IActivityInstance activityInstance)
         {
             if (activityInstance == null)
             {
