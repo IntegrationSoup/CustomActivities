@@ -6,7 +6,8 @@ namespace HL7SoupEncryptionActivities
 {
     [DisplayName("Encrypt Message")]
     [Parameter("Encryption Key", "The key used to encrypt and decrypt the message. Provide a good key of at least 12 characters.", isRequired: true)]
-    [InMessage(@"", TypeOfMessages.HL7)]
+    [ParameterUi("Encryption Key", Purpose = "Secret", ValidationRegex = "^.{12,}$", ValidationMessage = "Encryption Key must be at least 12 characters.")]
+    [InMessage(@"", TypeOfMessages.UserDefined)]
     [OutMessage(@"Encrypted Text", TypeOfMessages.Text)]
     public class EncryptMessage : EncryptionActivityBase
     {

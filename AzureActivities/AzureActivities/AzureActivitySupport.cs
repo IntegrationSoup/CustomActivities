@@ -3,6 +3,7 @@ using Popokey.ExtensionRunners;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace AzureActivities
 {
@@ -39,6 +40,54 @@ namespace AzureActivities
             {
                 throw new InvalidOperationException("Error: Response Message not set.");
             }
+        }
+
+        private protected static byte[] GetMessageBytes(IMessage message)
+        {
+            if (message == null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            if (message is IDicomMessage dicomMessage)
+            {
+                string base64Dicom = dicomMessage.GetBase64EncodedDicom();
+                return string.IsNullOrEmpty(base64Dicom)
+                    ? Array.Empty<byte>()
+                    : Convert.FromBase64String(base64Dicom);
+            }
+
+            string text = message.Text ?? string.Empty;
+            if (IsBinaryMessage(message))
+            {
+                try
+                {
+                    return Convert.FromBase64String(text);
+                }
+                catch (FormatException)
+                {
+                    return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
+                }
+            }
+
+            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
+        }
+
+        private static bool IsBinaryMessage(IMessage message)
+        {
+            if (message == null)
+            {
+                return false;
+            }
+
+            Type messageType = message.GetType();
+            if (string.Equals(messageType.Name, "BinaryMessage", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            object reflectedMessageType = messageType.GetProperty("MessageType")?.GetValue(message);
+            return string.Equals(reflectedMessageType?.ToString(), "Binary", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string GetRequiredParameter(Dictionary<string, string> parameters, string name)

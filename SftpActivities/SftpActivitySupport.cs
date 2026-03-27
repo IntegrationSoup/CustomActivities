@@ -3,6 +3,7 @@ using Popokey.ExtensionRunners;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace SftpActivities
 {
@@ -72,6 +73,90 @@ namespace SftpActivities
             {
                 throw new InvalidOperationException("Error: Response Message not set.");
             }
+        }
+
+        protected static byte[] GetMessageBytes(IMessage message, bool treatMessageAsBase64 = false)
+        {
+            if (message == null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            string text = message.Text ?? string.Empty;
+            if (treatMessageAsBase64)
+            {
+                try
+                {
+                    return Convert.FromBase64String(text);
+                }
+                catch (FormatException ex)
+                {
+                    throw new InvalidOperationException("The activity message was not valid base64.", ex);
+                }
+            }
+
+            if (message is IDicomMessage dicomMessage)
+            {
+                string base64Dicom = dicomMessage.GetBase64EncodedDicom();
+                return string.IsNullOrEmpty(base64Dicom)
+                    ? Array.Empty<byte>()
+                    : Convert.FromBase64String(base64Dicom);
+            }
+
+            if (IsBinaryMessage(message))
+            {
+                try
+                {
+                    return Convert.FromBase64String(text);
+                }
+                catch (FormatException)
+                {
+                    return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
+                }
+            }
+
+            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
+        }
+
+        protected static void SetResponseMessageBytes(IMessage responseMessage, byte[] bytes)
+        {
+            if (responseMessage == null)
+            {
+                throw new ArgumentNullException(nameof(responseMessage));
+            }
+
+            byte[] safeBytes = bytes ?? Array.Empty<byte>();
+            if (responseMessage is IDicomMessage || IsBinaryMessage(responseMessage))
+            {
+                responseMessage.SetText(Convert.ToBase64String(safeBytes));
+                return;
+            }
+
+            try
+            {
+                responseMessage.SetText(new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true).GetString(safeBytes));
+            }
+            catch (DecoderFallbackException ex)
+            {
+                throw new InvalidOperationException("The downloaded file was not valid UTF-8 text for the selected response message type.", ex);
+            }
+        }
+
+        private static bool IsBinaryMessage(IMessage message)
+        {
+            if (message == null)
+            {
+                return false;
+            }
+
+            Type messageType = message.GetType();
+            if (string.Equals(messageType.Name, "BinaryMessage", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            object reflectedMessageType = messageType.GetProperty("MessageType")?.GetValue(message);
+            return string.Equals(reflectedMessageType?.ToString(), "Binary", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string GetRequiredParameter(Dictionary<string, string> parameters, string name)
