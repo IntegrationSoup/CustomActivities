@@ -1,0 +1,15 @@
+# Visual Studio local workspace state
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET build outputs
+[Bb]in/
+[Oo]bj/
+
+# Test/build artifacts
+TestResults/
+*.nupkg
+*.snupkg
