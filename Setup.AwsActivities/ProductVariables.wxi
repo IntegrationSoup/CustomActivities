@@ -1,0 +1,18 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup AWS Activities Extension Library" ?>
+  <?define ProductDescription = "Installs the AWS extension library for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define ActivityFileName = "AmazonActivities.dll" ?>
+  <?define RunnerFolderName = "AwsActivitiesRunner" ?>
+  <?define RunnerExecutableName = "AwsActivitiesRunner.exe" ?>
+  <?define RunnerConfigFileName = "AwsActivitiesRunner.exe.config" ?>
+  <?define UpgradeCode = "{4BC6D2AB-6F6D-4A03-A09B-E82B9EB4FDD8}" ?>
+</Include>

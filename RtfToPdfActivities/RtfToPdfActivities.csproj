@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net48;net6.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RendererProjectPath>..\RtfToPdfActivities.Renderer\RtfToPdfActivities.Renderer.csproj</RendererProjectPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
+    <ProjectReference Include="..\..\HL7Soup\HL7Parser\HL7SoupIntegrations\HL7SoupIntegrations.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\DeployCustomLibraries.ps1" Link="DeployCustomLibraries.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\ClearAllCustomLibraries.ps1" Link="ClearAllCustomLibraries.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="BuildRtfToPdfRenderer" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
+    <PropertyGroup>
+      <RendererBuildOutputDirectory>$(MSBuildProjectDirectory)\..\RtfToPdfActivities.Renderer\bin\$(Configuration)\net48\</RendererBuildOutputDirectory>
+      <RendererOutputDirectory>$(TargetDir)RtfToPdfRenderer\</RendererOutputDirectory>
+    </PropertyGroup>
+    <MSBuild
+      Projects="$(RendererProjectPath)"
+      Targets="Restore;Build"
+      Properties="Configuration=$(Configuration);TargetFramework=net48" />
+    <RemoveDir Directories="$(RendererOutputDirectory)" />
+    <ItemGroup>
+      <RendererFiles Include="$(RendererBuildOutputDirectory)**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(RendererOutputDirectory)" />
+    <Copy
+      SourceFiles="@(RendererFiles)"
+      DestinationFiles="@(RendererFiles->'$(RendererOutputDirectory)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

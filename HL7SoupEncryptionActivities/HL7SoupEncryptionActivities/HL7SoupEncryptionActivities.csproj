@@ -3,8 +3,9 @@
   <PropertyGroup>
     <TargetFrameworks>net48;net6.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <RunnerProjectPath>..\..\AzureActivities.Runner\AzureActivities.Runner.csproj</RunnerProjectPath>
+    <RunnerProjectPath>..\..\HL7SoupEncryptionActivities.Runner\HL7SoupEncryptionActivities.Runner.csproj</RunnerProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,10 +22,10 @@
     </None>
   </ItemGroup>
 
-  <Target Name="BuildAzureRunner" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
+  <Target Name="BuildEncryptionRunner" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
     <PropertyGroup>
-      <RunnerBuildOutputDirectory>$(MSBuildProjectDirectory)\..\..\AzureActivities.Runner\bin\$(Configuration)\net48\</RunnerBuildOutputDirectory>
-      <RunnerOutputDirectory>$(TargetDir)AzureActivitiesRunner\</RunnerOutputDirectory>
+      <RunnerBuildOutputDirectory>$(MSBuildProjectDirectory)\..\..\HL7SoupEncryptionActivities.Runner\bin\$(Configuration)\net48\</RunnerBuildOutputDirectory>
+      <RunnerOutputDirectory>$(TargetDir)EncryptionActivitiesRunner\</RunnerOutputDirectory>
     </PropertyGroup>
     <MSBuild
       Projects="$(RunnerProjectPath)"

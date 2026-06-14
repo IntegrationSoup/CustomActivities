@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <RendererProjectPath>..\HtmlToPdfActivities.Renderer\HtmlToPdfActivities.Renderer.csproj</RendererProjectPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HtmlToPdfActivities\HtmlToPdfActivities.csproj" />
+  </ItemGroup>
+
+  <Target Name="BuildHtmlToPdfRenderer" AfterTargets="Build">
+    <PropertyGroup>
+      <RendererBuildOutputDirectory>$(MSBuildProjectDirectory)\..\HtmlToPdfActivities.Renderer\bin\$(Configuration)\net48\</RendererBuildOutputDirectory>
+      <RendererOutputDirectory>$(TargetDir)HtmlToPdfRenderer\</RendererOutputDirectory>
+    </PropertyGroup>
+    <MSBuild
+      Projects="$(RendererProjectPath)"
+      Targets="Restore;Build"
+      Properties="Configuration=$(Configuration);TargetFramework=net48" />
+    <RemoveDir Directories="$(RendererOutputDirectory)" />
+    <ItemGroup>
+      <RendererFiles Include="$(RendererBuildOutputDirectory)**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(RendererOutputDirectory)" />
+    <Copy
+      SourceFiles="@(RendererFiles)"
+      DestinationFiles="@(RendererFiles->'$(RendererOutputDirectory)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
+</Project>

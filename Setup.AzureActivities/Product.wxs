@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <?include $(var.ProjectDir)ProductVariables.wxi ?>
+  <?include $(var.GeneratedInstallerVersionFile) ?>
+
+  <Package Name="$(var.ProductDisplayName)"
+           Language="1033"
+           Version="$(var.InstallerVersion)"
+           Manufacturer="$(var.CompanyName)"
+           UpgradeCode="$(var.UpgradeCode)"
+           ProductCode="*"
+           Scope="perMachine"
+           InstallerVersion="500"
+           ShortNames="no">
+
+    <SummaryInformation Description="$(var.ProductDisplayName) $(var.ProductVersionString)"
+                        Keywords="Integration Soup, Extension Library, Installer, Azure" />
+
+    <Media Id="1" Cabinet="media1.cab" EmbedCab="yes" />
+
+    <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <Property Id="INTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\IntegrationSoupHostService"
+                      Type="raw" />
+    </Property>
+
+    <Property Id="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+      <RegistrySearch Id="FindLegacyIntegrationSoupHostService"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\HL7SoupIntegrationHostServer"
+                      Type="raw" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="COMPANYFOLDER" Name="$(var.CompanyName)">
+        <Directory Id="SERVERAPPLICATIONFOLDER" Name="$(var.IntegrationHostServerFolderName)">
+          <Directory Id="SERVERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)">
+            <Directory Id="SERVERRUNNERFOLDER" Name="$(var.RunnerFolderName)" />
+          </Directory>
+        </Directory>
+        <Directory Id="SOUPAPPLICATIONFOLDER" Name="$(var.HL7SoupFolderName)">
+          <Directory Id="SOUPCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+        <Directory Id="WORKFLOWDESIGNERAPPLICATIONFOLDER" Name="$(var.IntegrationWorkflowDesignerFolderName)">
+          <Directory Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER" Name="$(var.CustomLibrariesFolderName)" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="POPOKEYCOMMONDATAFOLDER" Name="Popokey">
+        <Directory Id="SHAREDSETTINGSFOLDER" Name="SharedSettings" />
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainFeature"
+             Title="$(var.ProductDisplayName)"
+             Description="$(var.ProductDescription)"
+             Level="1"
+             AllowAdvertise="no"
+             AllowAbsent="yes">
+      <ComponentRef Id="ServerActivityDllComponent" />
+      <ComponentRef Id="AzureServiceBusAvailableComponent" />
+      <ComponentGroupRef Id="RunnerComponents" />
+      <ComponentRef Id="ServerServiceRestartComponent" />
+      <ComponentRef Id="LegacyServerServiceRestartComponent" />
+      <ComponentRef Id="SoupActivityDllComponent" />
+      <ComponentRef Id="WorkflowDesignerActivityDllComponent" />
+    </Feature>
+
+    <ComponentGroup Id="RunnerComponents">
+      <ComponentRef Id="RunnerExecutableComponent" />
+      <ComponentRef Id="RunnerConfigComponent" />
+      <ComponentRef Id="AzureCoreComponent" />
+      <ComponentRef Id="AzureStorageBlobsComponent" />
+      <ComponentRef Id="AzureStorageCommonComponent" />
+      <ComponentRef Id="MicrosoftBclAsyncInterfacesComponent" />
+      <ComponentRef Id="SystemBuffersComponent" />
+      <ComponentRef Id="SystemDiagnosticsDiagnosticSourceComponent" />
+      <ComponentRef Id="SystemIoHashingComponent" />
+      <ComponentRef Id="SystemMemoryDataComponent" />
+      <ComponentRef Id="SystemMemoryComponent" />
+      <ComponentRef Id="SystemNumericsVectorsComponent" />
+      <ComponentRef Id="SystemRuntimeCompilerServicesUnsafeComponent" />
+      <ComponentRef Id="SystemTextEncodingsWebComponent" />
+      <ComponentRef Id="SystemTextJsonComponent" />
+      <ComponentRef Id="SystemThreadingTasksExtensionsComponent" />
+      <ComponentRef Id="SystemValueTupleComponent" />
+    </ComponentGroup>
+
+    <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
+      <Component Id="ServerActivityDllComponent" Guid="{BF3CDCA6-2115-4F6B-B9D7-DF78D980DB0F}">
+        <File Id="ServerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="ServerServiceRestartComponent"
+                 Guid="{18FF687E-7E38-42D1-900F-6577C55F83A4}"
+                 Condition="INTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\AzureActivities"
+                       Name="ServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartIntegrationSoupHostService"
+                        Name="IntegrationSoupHostService"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+
+      <Component Id="LegacyServerServiceRestartComponent"
+                 Guid="{D834B036-5639-4CB1-B37C-5B531CC3A6C5}"
+                 Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
+        <RegistryValue Root="HKLM"
+                       Key="Software\Popokey\AzureActivities"
+                       Name="LegacyServiceRestartMarker"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <ServiceControl Id="RestartLegacyIntegrationSoupHostService"
+                        Name="HL7SoupIntegrationHostServer"
+                        Stop="both"
+                        Start="install"
+                        Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SHAREDSETTINGSFOLDER">
+      <Component Id="AzureServiceBusAvailableComponent" Guid="{44FC6014-8B3E-4758-8B3A-E717A730B47D}">
+        <File Id="AzureServiceBusAvailableFile"
+              Name="AzureServiceBusAvailable.txt"
+              Source="$(var.ProjectDir)AzureServiceBusAvailable.txt"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SERVERRUNNERFOLDER">
+      <Component Id="RunnerExecutableComponent" Guid="{21140AD3-4C65-4A06-A562-B067A2474A54}">
+        <File Id="RunnerExecutableFile"
+              Name="$(var.RunnerExecutableName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerExecutableName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="RunnerConfigComponent" Guid="{5821A286-63A2-4D09-895D-EA335BBB2E35}">
+        <File Id="RunnerConfigFile"
+              Name="$(var.RunnerConfigFileName)"
+              Source="$(var.RunnerSourceDir)$(var.RunnerConfigFileName)"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AzureCoreComponent" Guid="{394FA79B-51F6-465E-BFD8-6E0E888D94E1}">
+        <File Id="AzureCoreFile"
+              Name="Azure.Core.dll"
+              Source="$(var.RunnerSourceDir)Azure.Core.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AzureStorageBlobsComponent" Guid="{C27F4C16-B4EE-413B-8C98-304F9B29E251}">
+        <File Id="AzureStorageBlobsFile"
+              Name="Azure.Storage.Blobs.dll"
+              Source="$(var.RunnerSourceDir)Azure.Storage.Blobs.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AzureStorageCommonComponent" Guid="{B8597994-C77E-4B97-ADD6-9963E133D4DE}">
+        <File Id="AzureStorageCommonFile"
+              Name="Azure.Storage.Common.dll"
+              Source="$(var.RunnerSourceDir)Azure.Storage.Common.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="MicrosoftBclAsyncInterfacesComponent" Guid="{AAF0C801-9529-424B-B035-F5B998AE4CB2}">
+        <File Id="MicrosoftBclAsyncInterfacesFile"
+              Name="Microsoft.Bcl.AsyncInterfaces.dll"
+              Source="$(var.RunnerSourceDir)Microsoft.Bcl.AsyncInterfaces.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemBuffersComponent" Guid="{80B3C8E2-77B9-4669-824B-F260963FE590}">
+        <File Id="SystemBuffersFile"
+              Name="System.Buffers.dll"
+              Source="$(var.RunnerSourceDir)System.Buffers.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemDiagnosticsDiagnosticSourceComponent" Guid="{F0D6280E-2EC2-440C-B757-B6ED0936CF1F}">
+        <File Id="SystemDiagnosticsDiagnosticSourceFile"
+              Name="System.Diagnostics.DiagnosticSource.dll"
+              Source="$(var.RunnerSourceDir)System.Diagnostics.DiagnosticSource.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemIoHashingComponent" Guid="{6354468A-C724-4707-B307-4BA4DE9AE56C}">
+        <File Id="SystemIoHashingFile"
+              Name="System.IO.Hashing.dll"
+              Source="$(var.RunnerSourceDir)System.IO.Hashing.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemMemoryDataComponent" Guid="{D767842B-1B11-4D52-A182-076C1503FFA9}">
+        <File Id="SystemMemoryDataFile"
+              Name="System.Memory.Data.dll"
+              Source="$(var.RunnerSourceDir)System.Memory.Data.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemMemoryComponent" Guid="{13DC21FC-53D8-4551-B40D-EA040A4E40DB}">
+        <File Id="SystemMemoryFile"
+              Name="System.Memory.dll"
+              Source="$(var.RunnerSourceDir)System.Memory.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemNumericsVectorsComponent" Guid="{6FE32104-390C-42B3-AA71-B756675091A8}">
+        <File Id="SystemNumericsVectorsFile"
+              Name="System.Numerics.Vectors.dll"
+              Source="$(var.RunnerSourceDir)System.Numerics.Vectors.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemRuntimeCompilerServicesUnsafeComponent" Guid="{F47B5980-443E-431C-8DF2-93469AFA86AA}">
+        <File Id="SystemRuntimeCompilerServicesUnsafeFile"
+              Name="System.Runtime.CompilerServices.Unsafe.dll"
+              Source="$(var.RunnerSourceDir)System.Runtime.CompilerServices.Unsafe.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemTextEncodingsWebComponent" Guid="{3620E26D-124C-4E49-915D-A1E831207784}">
+        <File Id="SystemTextEncodingsWebFile"
+              Name="System.Text.Encodings.Web.dll"
+              Source="$(var.RunnerSourceDir)System.Text.Encodings.Web.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemTextJsonComponent" Guid="{7B128515-7FCE-471F-833D-841200F6ED14}">
+        <File Id="SystemTextJsonFile"
+              Name="System.Text.Json.dll"
+              Source="$(var.RunnerSourceDir)System.Text.Json.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemThreadingTasksExtensionsComponent" Guid="{76627F50-0DFF-407A-B9BE-065812F51E93}">
+        <File Id="SystemThreadingTasksExtensionsFile"
+              Name="System.Threading.Tasks.Extensions.dll"
+              Source="$(var.RunnerSourceDir)System.Threading.Tasks.Extensions.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemValueTupleComponent" Guid="{5DA9D7A5-9BFC-44CF-B72F-168CB99D6418}">
+        <File Id="SystemValueTupleFile"
+              Name="System.ValueTuple.dll"
+              Source="$(var.RunnerSourceDir)System.ValueTuple.dll"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
+      <Component Id="SoupActivityDllComponent" Guid="{2930DDC2-9D71-4939-A069-7492D029AB88}">
+        <File Id="SoupActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
+      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{8CE4AE06-F168-452B-B099-EC37A69B4004}">
+        <File Id="WorkflowDesignerActivityDllFile"
+              Name="$(var.ActivityFileName)"
+              Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+  </Package>
+</Wix>
