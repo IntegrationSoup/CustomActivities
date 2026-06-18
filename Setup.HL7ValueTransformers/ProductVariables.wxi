@@ -1,0 +1,15 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup HL7 Value Transformers Extension Library" ?>
+  <?define ProductDescription = "Installs plain-text to HL7 value transformers for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define PayloadFileName = "HL7ValueTransformers.dll" ?>
+  <?define UpgradeCode = "{F08AEDA6-F49E-4C5D-BF79-20664F382726}" ?>
+</Include>

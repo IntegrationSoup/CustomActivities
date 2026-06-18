@@ -34,6 +34,12 @@ if not exist "%SOURCE_ROOT%Setup.ValidateHl7Transformer\bin\Release\IntegrationS
     exit /b 1
 )
 
+if not exist "%SOURCE_ROOT%Setup.HL7ValueTransformers\bin\Release\IntegrationSoup.HL7ValueTransformers.msi" (
+    echo Missing installer:
+    echo   %SOURCE_ROOT%Setup.HL7ValueTransformers\bin\Release\IntegrationSoup.HL7ValueTransformers.msi
+    exit /b 1
+)
+
 if not exist "%SOURCE_ROOT%Setup.AzureActivities\bin\Release\IntegrationSoup.AzureActivities.msi" (
     echo Missing installer:
     echo   %SOURCE_ROOT%Setup.AzureActivities\bin\Release\IntegrationSoup.AzureActivities.msi
@@ -69,6 +75,9 @@ copy /Y "%SOURCE_ROOT%Setup.DataFromPdfActivities\bin\Release\IntegrationSoup.Da
 
 echo Copying IntegrationSoup.ValidateHl7Transformer.msi
 copy /Y "%SOURCE_ROOT%Setup.ValidateHl7Transformer\bin\Release\IntegrationSoup.ValidateHl7Transformer.msi" "%DESTINATION%\IntegrationSoup.ValidateHl7Transformer.msi" >nul || exit /b 1
+
+echo Copying IntegrationSoup.HL7ValueTransformers.msi
+copy /Y "%SOURCE_ROOT%Setup.HL7ValueTransformers\bin\Release\IntegrationSoup.HL7ValueTransformers.msi" "%DESTINATION%\IntegrationSoup.HL7ValueTransformers.msi" >nul || exit /b 1
 
 echo Copying IntegrationSoup.AzureActivities.msi
 copy /Y "%SOURCE_ROOT%Setup.AzureActivities\bin\Release\IntegrationSoup.AzureActivities.msi" "%DESTINATION%\IntegrationSoup.AzureActivities.msi" >nul || exit /b 1
