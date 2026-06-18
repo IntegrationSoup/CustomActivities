@@ -15,7 +15,7 @@
            ShortNames="no">
 
     <SummaryInformation Description="$(var.ProductDisplayName) $(var.ProductVersionString)"
-                        Keywords="Integration Soup, Extension Library, Installer, SFTP, WinSCP" />
+                        Keywords="Integration Soup, Extension Library, Installer, PDF, JSON, Data" />
 
     <Media Id="1" Cabinet="media1.cab" EmbedCab="yes" />
 
@@ -57,7 +57,7 @@
     </StandardDirectory>
 
     <Feature Id="MainFeature"
-             Title="$(var.ProductDisplayName)"
+             Title="Data from PDF"
              Description="$(var.ProductDescription)"
              Level="1"
              AllowAdvertise="no"
@@ -73,12 +73,22 @@
     <ComponentGroup Id="RunnerComponents">
       <ComponentRef Id="RunnerExecutableComponent" />
       <ComponentRef Id="RunnerConfigComponent" />
-      <ComponentRef Id="WinScpExecutableComponent" />
-      <ComponentRef Id="WinScpNetComponent" />
+      <ComponentRef Id="UglyToadPdfPigComponent" />
+      <ComponentRef Id="UglyToadPdfPigCoreComponent" />
+      <ComponentRef Id="UglyToadPdfPigDocumentLayoutAnalysisComponent" />
+      <ComponentRef Id="UglyToadPdfPigFontsComponent" />
+      <ComponentRef Id="UglyToadPdfPigPackageComponent" />
+      <ComponentRef Id="UglyToadPdfPigTokenizationComponent" />
+      <ComponentRef Id="UglyToadPdfPigTokensComponent" />
+      <ComponentRef Id="MicrosoftBclHashCodeComponent" />
+      <ComponentRef Id="SystemMemoryComponent" />
+      <ComponentRef Id="SystemRuntimeCompilerServicesUnsafeComponent" />
+      <ComponentRef Id="SystemBuffersComponent" />
+      <ComponentRef Id="SystemNumericsVectorsComponent" />
     </ComponentGroup>
 
     <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
-      <Component Id="ServerActivityDllComponent" Guid="{08DE9BBD-D33C-454A-8EDB-58C5A4935BCA}">
+      <Component Id="ServerActivityDllComponent" Guid="{3122CBEB-4952-4747-95FF-B06E6A8B0301}">
         <File Id="ServerActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
@@ -86,10 +96,10 @@
       </Component>
 
       <Component Id="ServerServiceRestartComponent"
-                 Guid="{9667AD50-1F58-41A8-948A-C9035FF73994}"
+                 Guid="{DAEA53D4-F157-4EA6-8144-8B2C2E92BBBF}"
                  Condition="INTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
-                       Key="Software\Popokey\SftpActivities"
+                       Key="Software\Popokey\DataFromPdfActivities"
                        Name="ServiceRestartMarker"
                        Type="integer"
                        Value="1"
@@ -102,10 +112,10 @@
       </Component>
 
       <Component Id="LegacyServerServiceRestartComponent"
-                 Guid="{68110728-8840-40B5-B438-C1707627BF9A}"
+                 Guid="{B1CFECBB-EE19-4486-837D-AF2F0737DF76}"
                  Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
-                       Key="Software\Popokey\SftpActivities"
+                       Key="Software\Popokey\DataFromPdfActivities"
                        Name="LegacyServiceRestartMarker"
                        Type="integer"
                        Value="1"
@@ -119,37 +129,107 @@
     </DirectoryRef>
 
     <DirectoryRef Id="SERVERRUNNERFOLDER">
-      <Component Id="RunnerExecutableComponent" Guid="{EC64B06C-4AAD-46E8-A13C-3CB4EFD6546F}">
+      <Component Id="RunnerExecutableComponent" Guid="{924780B0-990F-499C-BA0B-4AC30F33103B}">
         <File Id="RunnerExecutableFile"
               Name="$(var.RunnerExecutableName)"
               Source="$(var.RunnerSourceDir)$(var.RunnerExecutableName)"
               KeyPath="yes" />
       </Component>
 
-      <Component Id="RunnerConfigComponent" Guid="{54AB5160-9153-464B-B2BE-FDD064F2A85C}">
+      <Component Id="RunnerConfigComponent" Guid="{33FE0AFD-FD4C-4553-B193-E54DD43527EC}">
         <File Id="RunnerConfigFile"
               Name="$(var.RunnerConfigFileName)"
               Source="$(var.RunnerSourceDir)$(var.RunnerConfigFileName)"
               KeyPath="yes" />
       </Component>
 
-      <Component Id="WinScpExecutableComponent" Guid="{A8802FD2-58E5-4DDA-BD80-E2304D7EE0F5}">
-        <File Id="WinScpExecutableFile"
-              Name="$(var.WinScpExecutableName)"
-              Source="$(var.RunnerSourceDir)$(var.WinScpExecutableName)"
+      <Component Id="UglyToadPdfPigComponent" Guid="{8ECF962A-EFFA-4C60-B935-5EDFF0994893}">
+        <File Id="UglyToadPdfPigFile"
+              Name="UglyToad.PdfPig.dll"
+              Source="$(var.RunnerSourceDir)UglyToad.PdfPig.dll"
               KeyPath="yes" />
       </Component>
 
-      <Component Id="WinScpNetComponent" Guid="{614087E6-37A5-4751-95FC-45AA39D3F7EA}">
-        <File Id="WinScpNetFile"
-              Name="$(var.WinScpNetAssemblyName)"
-              Source="$(var.RunnerSourceDir)$(var.WinScpNetAssemblyName)"
+      <Component Id="UglyToadPdfPigCoreComponent" Guid="{1831274D-33B2-48DA-9108-4756E7855354}">
+        <File Id="UglyToadPdfPigCoreFile"
+              Name="UglyToad.PdfPig.Core.dll"
+              Source="$(var.RunnerSourceDir)UglyToad.PdfPig.Core.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="UglyToadPdfPigDocumentLayoutAnalysisComponent" Guid="{94A8CBFD-48E7-4E29-B1C2-E74E30010914}">
+        <File Id="UglyToadPdfPigDocumentLayoutAnalysisFile"
+              Name="UglyToad.PdfPig.DocumentLayoutAnalysis.dll"
+              Source="$(var.RunnerSourceDir)UglyToad.PdfPig.DocumentLayoutAnalysis.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="UglyToadPdfPigFontsComponent" Guid="{F2DA16C2-1A59-4053-9FF1-17582841B230}">
+        <File Id="UglyToadPdfPigFontsFile"
+              Name="UglyToad.PdfPig.Fonts.dll"
+              Source="$(var.RunnerSourceDir)UglyToad.PdfPig.Fonts.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="UglyToadPdfPigPackageComponent" Guid="{F91D737A-A279-457C-95A7-2AF7648D46E1}">
+        <File Id="UglyToadPdfPigPackageFile"
+              Name="UglyToad.PdfPig.Package.dll"
+              Source="$(var.RunnerSourceDir)UglyToad.PdfPig.Package.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="UglyToadPdfPigTokenizationComponent" Guid="{BB6A3487-FA55-43BE-BAA6-AD944B8B1DA8}">
+        <File Id="UglyToadPdfPigTokenizationFile"
+              Name="UglyToad.PdfPig.Tokenization.dll"
+              Source="$(var.RunnerSourceDir)UglyToad.PdfPig.Tokenization.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="UglyToadPdfPigTokensComponent" Guid="{738F1D5B-8710-4928-866D-671A51E6428C}">
+        <File Id="UglyToadPdfPigTokensFile"
+              Name="UglyToad.PdfPig.Tokens.dll"
+              Source="$(var.RunnerSourceDir)UglyToad.PdfPig.Tokens.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="MicrosoftBclHashCodeComponent" Guid="{783A9521-461A-4114-B59C-A9AD5F12B1BC}">
+        <File Id="MicrosoftBclHashCodeFile"
+              Name="Microsoft.Bcl.HashCode.dll"
+              Source="$(var.RunnerSourceDir)Microsoft.Bcl.HashCode.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemMemoryComponent" Guid="{772C29D8-2E19-49C7-8EE5-010B55122A50}">
+        <File Id="SystemMemoryFile"
+              Name="System.Memory.dll"
+              Source="$(var.RunnerSourceDir)System.Memory.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemRuntimeCompilerServicesUnsafeComponent" Guid="{4839DCC1-9A97-4551-9E7B-28073D4B7F43}">
+        <File Id="SystemRuntimeCompilerServicesUnsafeFile"
+              Name="System.Runtime.CompilerServices.Unsafe.dll"
+              Source="$(var.RunnerSourceDir)System.Runtime.CompilerServices.Unsafe.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemBuffersComponent" Guid="{0864BE38-1ADB-43D0-BD02-E4C48DD52030}">
+        <File Id="SystemBuffersFile"
+              Name="System.Buffers.dll"
+              Source="$(var.RunnerSourceDir)System.Buffers.dll"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="SystemNumericsVectorsComponent" Guid="{FEFCB66D-A731-4579-94FC-75FDA3CB327C}">
+        <File Id="SystemNumericsVectorsFile"
+              Name="System.Numerics.Vectors.dll"
+              Source="$(var.RunnerSourceDir)System.Numerics.Vectors.dll"
               KeyPath="yes" />
       </Component>
     </DirectoryRef>
 
     <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
-      <Component Id="SoupActivityDllComponent" Guid="{1AE8CFBB-D444-4C45-A03D-D22BB428F556}">
+      <Component Id="SoupActivityDllComponent" Guid="{30E3052B-1EC5-4797-9AB9-9120902B6725}">
         <File Id="SoupActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
@@ -158,7 +238,7 @@
     </DirectoryRef>
 
     <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
-      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{99A771AA-8320-47E9-9BB4-0DC603BF8863}">
+      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{BC75E9D7-2D64-4A38-89D6-6AB08C8207BF}">
         <File Id="WorkflowDesignerActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"

@@ -22,6 +22,12 @@ if not exist "%SOURCE_ROOT%Setup.RtfToPdfActivities\bin\Release\IntegrationSoup.
     exit /b 1
 )
 
+if not exist "%SOURCE_ROOT%Setup.DataFromPdfActivities\bin\Release\IntegrationSoup.DataFromPdfActivities.msi" (
+    echo Missing installer:
+    echo   %SOURCE_ROOT%Setup.DataFromPdfActivities\bin\Release\IntegrationSoup.DataFromPdfActivities.msi
+    exit /b 1
+)
+
 if not exist "%SOURCE_ROOT%Setup.ValidateHl7Transformer\bin\Release\IntegrationSoup.ValidateHl7Transformer.msi" (
     echo Missing installer:
     echo   %SOURCE_ROOT%Setup.ValidateHl7Transformer\bin\Release\IntegrationSoup.ValidateHl7Transformer.msi
@@ -57,6 +63,9 @@ copy /Y "%SOURCE_ROOT%Setup.HtmlToPdfActivities\bin\Release\IntegrationSoup.Html
 
 echo Copying IntegrationSoup.RtfToPdfActivities.msi
 copy /Y "%SOURCE_ROOT%Setup.RtfToPdfActivities\bin\Release\IntegrationSoup.RtfToPdfActivities.msi" "%DESTINATION%\IntegrationSoup.RtfToPdfActivities.msi" >nul || exit /b 1
+
+echo Copying IntegrationSoup.DataFromPdfActivities.msi
+copy /Y "%SOURCE_ROOT%Setup.DataFromPdfActivities\bin\Release\IntegrationSoup.DataFromPdfActivities.msi" "%DESTINATION%\IntegrationSoup.DataFromPdfActivities.msi" >nul || exit /b 1
 
 echo Copying IntegrationSoup.ValidateHl7Transformer.msi
 copy /Y "%SOURCE_ROOT%Setup.ValidateHl7Transformer\bin\Release\IntegrationSoup.ValidateHl7Transformer.msi" "%DESTINATION%\IntegrationSoup.ValidateHl7Transformer.msi" >nul || exit /b 1

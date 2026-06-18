@@ -1,0 +1,18 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup Data from PDF Extension Library" ?>
+  <?define ProductDescription = "Installs the Data from PDF extension library for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define ActivityFileName = "DataFromPdfActivities.dll" ?>
+  <?define RunnerFolderName = "DataFromPdfRunner" ?>
+  <?define RunnerExecutableName = "DataFromPdfRunner.exe" ?>
+  <?define RunnerConfigFileName = "DataFromPdfRunner.exe.config" ?>
+  <?define UpgradeCode = "{81046245-3E29-43DE-96A2-53CC32B3DB38}" ?>
+</Include>

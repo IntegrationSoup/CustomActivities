@@ -28,6 +28,7 @@
       <RegistrySearch Id="FindIntegrationSoupHostService"
                       Root="HKLM"
                       Key="SYSTEM\CurrentControlSet\Services\IntegrationSoupHostService"
+                      Name="ImagePath"
                       Type="raw" />
     </Property>
 
@@ -35,6 +36,7 @@
       <RegistrySearch Id="FindLegacyIntegrationSoupHostService"
                       Root="HKLM"
                       Key="SYSTEM\CurrentControlSet\Services\HL7SoupIntegrationHostServer"
+                      Name="ImagePath"
                       Type="raw" />
     </Property>
 
