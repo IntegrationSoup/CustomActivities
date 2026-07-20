@@ -33,14 +33,25 @@ namespace HL7ValueTransformers
             @"(?:\s+(?:extn?|extension|x)\.?\s*|\s*#\s*)(?<extension>\d{1,8})\s*$",
             RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
+        private static readonly Regex LeadingNumericIdentifierPattern = new Regex(
+            @"^\s*(?<identifier>\d+)\s+(?<name>.+?)\s*$",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        private static readonly Regex BracketedIdentifierPattern = new Regex(
+            @"\((?<identifier>[A-Za-z0-9]{1,12})\)",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
         private static readonly IReadOnlyDictionary<string, string> NamePrefixes =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Dr"] = "Dr",
+                ["Doctor"] = "Dr",
                 ["Mr"] = "Mr",
+                ["Mister"] = "Mr",
                 ["Mrs"] = "Mrs",
                 ["Ms"] = "Ms",
                 ["Miss"] = "Miss",
+                ["Master"] = "Master",
                 ["Prof"] = "Prof",
                 ["Professor"] = "Prof"
             };
@@ -75,6 +86,11 @@ namespace HL7ValueTransformers
 
         public static string FormatHl7Xpn(string value)
         {
+            return FormatHl7Xpn(value, string.Empty);
+        }
+
+        public static string FormatHl7Xpn(string value, string nameOrder)
+        {
             string cleaned = (value ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(cleaned))
             {
@@ -86,32 +102,37 @@ namespace HL7ValueTransformers
                 return string.Join("^", cleaned.Split('^').Select(EscapeHl7).ToArray());
             }
 
-            if (cleaned.Contains(","))
-            {
-                string[] parts = cleaned.Split(new[] { ',' }, 2, StringSplitOptions.None)
-                    .Select(part => part.Trim())
-                    .ToArray();
+            Hl7NameComponents name = ParsePersonName(cleaned, nameOrder, false, string.Empty);
+            return JoinComponents(
+                EscapeHl7(name.FamilyName),
+                EscapeHl7(name.GivenName),
+                EscapeHl7(name.FurtherGivenNames),
+                EscapeHl7(name.Suffix),
+                EscapeHl7(name.Prefix));
+        }
 
-                return EscapeHl7(parts[0]) + "^" + EscapeHl7(parts.Length > 1 ? parts[1] : string.Empty);
+        public static string FormatHl7Xcn(string value, string nameOrder, string personIdentifier)
+        {
+            string cleaned = (value ?? string.Empty).Trim();
+            string identifier = (personIdentifier ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(cleaned))
+            {
+                return EscapeHl7(identifier);
             }
 
-            string[] tokens = SplitWords(cleaned);
-            string prefix = ExtractNamePrefix(ref tokens);
-            if (tokens.Length == 0)
+            if (cleaned.Contains("^"))
             {
-                return string.IsNullOrWhiteSpace(prefix) ? string.Empty : JoinComponents(string.Empty, string.Empty, string.Empty, string.Empty, EscapeHl7(prefix));
+                return FormatExistingHl7Xcn(cleaned, identifier);
             }
 
-            if (tokens.Length == 1)
-            {
-                return string.IsNullOrWhiteSpace(prefix)
-                    ? EscapeHl7(tokens[0])
-                    : JoinComponents(EscapeHl7(tokens[0]), string.Empty, string.Empty, string.Empty, EscapeHl7(prefix));
-            }
-
-            string family = tokens[tokens.Length - 1];
-            string given = string.Join(" ", tokens.Take(tokens.Length - 1).ToArray());
-            return JoinComponents(EscapeHl7(family), EscapeHl7(given), string.Empty, string.Empty, EscapeHl7(prefix));
+            Hl7NameComponents name = ParsePersonName(cleaned, nameOrder, true, identifier);
+            return JoinComponents(
+                EscapeHl7(name.Identifier),
+                EscapeHl7(name.FamilyName),
+                EscapeHl7(name.GivenName),
+                EscapeHl7(name.FurtherGivenNames),
+                EscapeHl7(name.Suffix),
+                EscapeHl7(name.Prefix));
         }
 
         public static string FormatHl7Xad(string value)
@@ -189,17 +210,389 @@ namespace HL7ValueTransformers
                 .Trim();
         }
 
-        private static string[] SplitWords(string value)
+        private static string FormatExistingHl7Xcn(string value, string personIdentifier)
         {
-            return (value ?? string.Empty)
-                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(token => token.Trim())
-                .Where(token => token.Length > 0)
-                .ToArray();
+            string[] components = (value ?? string.Empty).Split('^');
+            if (!string.IsNullOrWhiteSpace(personIdentifier))
+            {
+                components[0] = personIdentifier.Trim();
+            }
+
+            return string.Join("^", components.Select(EscapeHl7).ToArray());
         }
 
-        private static string ExtractNamePrefix(ref string[] tokens)
+        private static Hl7NameComponents ParsePersonName(
+            string value,
+            string nameOrder,
+            bool allowIdentifier,
+            string explicitIdentifier)
         {
+            string nameText = NormalizeWhitespace(value);
+            string identifier = (explicitIdentifier ?? string.Empty).Trim();
+            bool hasNameOrder = !string.IsNullOrWhiteSpace(nameOrder);
+            bool identifierWasExtractedFromName = false;
+
+            if (allowIdentifier && string.IsNullOrWhiteSpace(identifier))
+            {
+                identifier = ExtractBracketedIdentifier(ref nameText);
+                identifierWasExtractedFromName = !string.IsNullOrWhiteSpace(identifier);
+            }
+
+            if (allowIdentifier && !hasNameOrder && string.IsNullOrWhiteSpace(identifier))
+            {
+                identifier = ExtractLeadingNumericIdentifier(ref nameText);
+                identifierWasExtractedFromName = !string.IsNullOrWhiteSpace(identifier);
+            }
+
+            Hl7NameComponents name;
+            if (hasNameOrder && TryParseNameWithOrder(nameText, nameOrder, allowIdentifier, identifier, identifierWasExtractedFromName, out name))
+            {
+                return name;
+            }
+
+            return ParseNameWithDefaultOrder(nameText, identifier);
+        }
+
+        private static bool TryParseNameWithOrder(
+            string value,
+            string nameOrder,
+            bool allowIdentifier,
+            string identifier,
+            bool identifierWasExtractedFromName,
+            out Hl7NameComponents name)
+        {
+            name = null;
+            foreach (NameOrderAlternative alternative in ParseNameOrderAlternatives(nameOrder))
+            {
+                if (alternative.RequiresComma && !(value ?? string.Empty).Contains(","))
+                {
+                    continue;
+                }
+
+                string working = NormalizeWhitespace(value);
+                string prefix = ExtractLeadingNamePrefix(ref working);
+                List<string> tokens = SplitNameTokens(working).ToList();
+                List<NameOrderField> fields = alternative.Fields
+                    .Where(field => field != NameOrderField.Title)
+                    .ToList();
+                string parsedIdentifier = identifier ?? string.Empty;
+
+                if (fields.Contains(NameOrderField.Identifier))
+                {
+                    ConsumeIdentifierField(tokens, fields, allowIdentifier, identifierWasExtractedFromName, ref parsedIdentifier);
+                }
+
+                fields.RemoveAll(field => field == NameOrderField.Identifier);
+
+                Hl7NameComponents ordered;
+                if (!TryBuildOrderedName(tokens, fields, out ordered))
+                {
+                    continue;
+                }
+
+                name = new Hl7NameComponents(
+                    parsedIdentifier,
+                    ordered.FamilyName,
+                    ordered.GivenName,
+                    ordered.FurtherGivenNames,
+                    ordered.Suffix,
+                    prefix);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static IEnumerable<NameOrderAlternative> ParseNameOrderAlternatives(string nameOrder)
+        {
+            string[] alternatives = (nameOrder ?? string.Empty)
+                .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string alternative in alternatives)
+            {
+                NameOrderAlternative parsed = ParseNameOrderAlternative(alternative);
+                if (parsed.Fields.Count > 0)
+                {
+                    yield return parsed;
+                }
+            }
+        }
+
+        private static NameOrderAlternative ParseNameOrderAlternative(string value)
+        {
+            string cleaned = (value ?? string.Empty).Trim();
+            bool requiresComma = cleaned.Contains(",");
+            List<NameOrderField> fields = new List<NameOrderField>();
+            string[] words = cleaned
+                .Split(new[] { ' ', '\t', '\r', '\n', ',', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string word in words)
+            {
+                if (TryAddNameOrderWord(word, fields))
+                {
+                    continue;
+                }
+            }
+
+            if (fields.Count == 0)
+            {
+                string compact = Regex.Replace(cleaned, @"[^A-Za-z]", string.Empty);
+                for (int index = 0; index < compact.Length;)
+                {
+                    if (index + 1 < compact.Length &&
+                        string.Equals(compact.Substring(index, 2), "ID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fields.Add(NameOrderField.Identifier);
+                        index += 2;
+                        continue;
+                    }
+
+                    NameOrderField field;
+                    if (TryGetNameOrderField(compact[index].ToString(), out field))
+                    {
+                        fields.Add(field);
+                    }
+
+                    index++;
+                }
+            }
+
+            return new NameOrderAlternative(fields, requiresComma);
+        }
+
+        private static bool TryAddNameOrderWord(string word, List<NameOrderField> fields)
+        {
+            if (string.IsNullOrWhiteSpace(word))
+            {
+                return false;
+            }
+
+            NameOrderField field;
+            if (TryGetNameOrderField(word, out field))
+            {
+                fields.Add(field);
+                return true;
+            }
+
+            if (word.Length > 1)
+            {
+                bool addedAny = false;
+                for (int index = 0; index < word.Length;)
+                {
+                    if (index + 1 < word.Length &&
+                        string.Equals(word.Substring(index, 2), "ID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fields.Add(NameOrderField.Identifier);
+                        index += 2;
+                        addedAny = true;
+                        continue;
+                    }
+
+                    if (TryGetNameOrderField(word[index].ToString(), out field))
+                    {
+                        fields.Add(field);
+                        addedAny = true;
+                    }
+
+                    index++;
+                }
+
+                return addedAny;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetNameOrderField(string value, out NameOrderField field)
+        {
+            switch ((value ?? string.Empty).Trim().ToUpperInvariant())
+            {
+                case "I":
+                case "ID":
+                case "IDENTIFIER":
+                case "PERSONID":
+                case "PERSONIDENTIFIER":
+                    field = NameOrderField.Identifier;
+                    return true;
+                case "T":
+                case "TITLE":
+                case "PREFIX":
+                    field = NameOrderField.Title;
+                    return true;
+                case "F":
+                case "FIRST":
+                case "GIVEN":
+                    field = NameOrderField.Given;
+                    return true;
+                case "M":
+                case "MIDDLE":
+                case "FURTHER":
+                    field = NameOrderField.Middle;
+                    return true;
+                case "L":
+                case "LAST":
+                case "FAMILY":
+                case "SURNAME":
+                    field = NameOrderField.Family;
+                    return true;
+                default:
+                    field = NameOrderField.Given;
+                    return false;
+            }
+        }
+
+        private static void ConsumeIdentifierField(
+            List<string> tokens,
+            List<NameOrderField> fields,
+            bool allowIdentifier,
+            bool identifierWasExtractedFromName,
+            ref string identifier)
+        {
+            int idFieldIndex = fields.IndexOf(NameOrderField.Identifier);
+            if (idFieldIndex < 0 || tokens.Count == 0)
+            {
+                return;
+            }
+
+            if (identifierWasExtractedFromName && !string.IsNullOrWhiteSpace(identifier))
+            {
+                return;
+            }
+
+            int tokenIndex = idFieldIndex;
+            if (tokenIndex >= tokens.Count)
+            {
+                tokenIndex = idFieldIndex == fields.Count - 1 ? tokens.Count - 1 : -1;
+            }
+
+            if (tokenIndex < 0)
+            {
+                return;
+            }
+
+            string parsedIdentifier = CleanIdentifierToken(tokens[tokenIndex]);
+            tokens.RemoveAt(tokenIndex);
+            if (allowIdentifier && string.IsNullOrWhiteSpace(identifier))
+            {
+                identifier = parsedIdentifier;
+            }
+        }
+
+        private static bool TryBuildOrderedName(
+            IReadOnlyList<string> tokens,
+            IReadOnlyList<NameOrderField> fields,
+            out Hl7NameComponents name)
+        {
+            name = null;
+            if (tokens.Count == 0)
+            {
+                return false;
+            }
+
+            if (FieldsEqual(fields, NameOrderField.Given, NameOrderField.Middle, NameOrderField.Family))
+            {
+                name = new Hl7NameComponents(
+                    string.Empty,
+                    LastToken(tokens),
+                    tokens[0],
+                    JoinTokenRange(tokens, 1, tokens.Count - 2),
+                    string.Empty,
+                    string.Empty);
+                return true;
+            }
+
+            if (FieldsEqual(fields, NameOrderField.Given, NameOrderField.Family))
+            {
+                name = new Hl7NameComponents(
+                    string.Empty,
+                    LastToken(tokens),
+                    JoinTokenRange(tokens, 0, tokens.Count - 2),
+                    string.Empty,
+                    string.Empty,
+                    string.Empty);
+                return true;
+            }
+
+            if (FieldsEqual(fields, NameOrderField.Family, NameOrderField.Given, NameOrderField.Middle))
+            {
+                name = new Hl7NameComponents(
+                    string.Empty,
+                    tokens[0],
+                    tokens.Count > 1 ? tokens[1] : string.Empty,
+                    JoinTokenRange(tokens, 2, tokens.Count - 1),
+                    string.Empty,
+                    string.Empty);
+                return true;
+            }
+
+            if (FieldsEqual(fields, NameOrderField.Family, NameOrderField.Given))
+            {
+                name = new Hl7NameComponents(
+                    string.Empty,
+                    tokens[0],
+                    JoinTokenRange(tokens, 1, tokens.Count - 1),
+                    string.Empty,
+                    string.Empty,
+                    string.Empty);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool FieldsEqual(IReadOnlyList<NameOrderField> fields, params NameOrderField[] expected)
+        {
+            return fields.Count == expected.Length && fields.SequenceEqual(expected);
+        }
+
+        private static Hl7NameComponents ParseNameWithDefaultOrder(string value, string identifier)
+        {
+            string working = NormalizeWhitespace(value);
+            string prefix = ExtractLeadingNamePrefix(ref working);
+            if (string.IsNullOrWhiteSpace(working))
+            {
+                return new Hl7NameComponents(identifier, string.Empty, string.Empty, string.Empty, string.Empty, prefix);
+            }
+
+            if (working.Contains(","))
+            {
+                string[] parts = working.Split(new[] { ',' }, 2, StringSplitOptions.None)
+                    .Select(part => part.Trim())
+                    .ToArray();
+                string[] givenTokens = parts.Length > 1 ? SplitNameTokens(parts[1]) : Array.Empty<string>();
+
+                return new Hl7NameComponents(
+                    identifier,
+                    parts[0],
+                    givenTokens.Length > 0 ? givenTokens[0] : string.Empty,
+                    JoinTokenRange(givenTokens, 1, givenTokens.Length - 1),
+                    string.Empty,
+                    prefix);
+            }
+
+            string[] tokens = SplitNameTokens(working);
+            if (tokens.Length == 0)
+            {
+                return new Hl7NameComponents(identifier, string.Empty, string.Empty, string.Empty, string.Empty, prefix);
+            }
+
+            if (tokens.Length == 1)
+            {
+                return new Hl7NameComponents(identifier, tokens[0], string.Empty, string.Empty, string.Empty, prefix);
+            }
+
+            return new Hl7NameComponents(
+                identifier,
+                tokens[tokens.Length - 1],
+                tokens[0],
+                JoinTokenRange(tokens, 1, tokens.Length - 2),
+                string.Empty,
+                prefix);
+        }
+
+        private static string ExtractLeadingNamePrefix(ref string value)
+        {
+            string[] tokens = SplitWords(value);
             if (tokens.Length <= 1)
             {
                 return string.Empty;
@@ -212,8 +605,101 @@ namespace HL7ValueTransformers
                 return string.Empty;
             }
 
-            tokens = tokens.Skip(1).ToArray();
+            int firstTokenIndex = (value ?? string.Empty).IndexOf(tokens[0], StringComparison.Ordinal);
+            value = firstTokenIndex < 0
+                ? string.Empty
+                : NormalizeWhitespace(value.Substring(firstTokenIndex + tokens[0].Length));
             return prefix;
+        }
+
+        private static string ExtractBracketedIdentifier(ref string value)
+        {
+            MatchCollection matches = BracketedIdentifierPattern.Matches(value ?? string.Empty);
+            foreach (Match match in matches)
+            {
+                string identifier = match.Groups["identifier"].Value;
+                if (!identifier.Any(char.IsDigit))
+                {
+                    continue;
+                }
+
+                value = NormalizeWhitespace((value ?? string.Empty).Remove(match.Index, match.Length));
+                return identifier;
+            }
+
+            return string.Empty;
+        }
+
+        private static string ExtractLeadingNumericIdentifier(ref string value)
+        {
+            Match match = LeadingNumericIdentifierPattern.Match(value ?? string.Empty);
+            if (!match.Success)
+            {
+                return string.Empty;
+            }
+
+            value = NormalizeWhitespace(match.Groups["name"].Value);
+            return match.Groups["identifier"].Value.Trim();
+        }
+
+        private static string CleanIdentifierToken(string value)
+        {
+            return (value ?? string.Empty).Trim().Trim('(', ')');
+        }
+
+        private static string[] SplitNameTokens(string value)
+        {
+            return MergeBracketedNicknames(SplitWords((value ?? string.Empty).Replace(",", " ")));
+        }
+
+        private static string[] MergeBracketedNicknames(IReadOnlyList<string> tokens)
+        {
+            List<string> merged = new List<string>();
+            foreach (string token in tokens ?? Array.Empty<string>())
+            {
+                if (merged.Count > 0 &&
+                    token.StartsWith("(", StringComparison.Ordinal) &&
+                    token.EndsWith(")", StringComparison.Ordinal) &&
+                    !token.Any(char.IsDigit))
+                {
+                    merged[merged.Count - 1] = merged[merged.Count - 1] + " " + token;
+                    continue;
+                }
+
+                merged.Add(token);
+            }
+
+            return merged.ToArray();
+        }
+
+        private static string[] SplitWords(string value)
+        {
+            return NormalizeWhitespace(value)
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(token => token.Trim())
+                .Where(token => token.Length > 0)
+                .ToArray();
+        }
+
+        private static string NormalizeWhitespace(string value)
+        {
+            return RepeatedWhitespacePattern.Replace(value ?? string.Empty, " ").Trim();
+        }
+
+        private static string LastToken(IReadOnlyList<string> tokens)
+        {
+            return tokens.Count == 0 ? string.Empty : tokens[tokens.Count - 1];
+        }
+
+        private static string JoinTokenRange(IReadOnlyList<string> tokens, int startIndex, int endIndex)
+        {
+            if (tokens.Count == 0 || startIndex < 0 || endIndex < startIndex || startIndex >= tokens.Count)
+            {
+                return string.Empty;
+            }
+
+            int safeEndIndex = Math.Min(endIndex, tokens.Count - 1);
+            return string.Join(" ", tokens.Skip(startIndex).Take(safeEndIndex - startIndex + 1).ToArray());
         }
 
         private static bool TryParseAddressLines(IReadOnlyList<string> lines, out Hl7AddressComponents address)
@@ -372,6 +858,53 @@ namespace HL7ValueTransformers
             return last < 0
                 ? string.Empty
                 : string.Join("^", components.Take(last + 1).ToArray());
+        }
+
+        private enum NameOrderField
+        {
+            Identifier,
+            Title,
+            Family,
+            Given,
+            Middle
+        }
+
+        private sealed class NameOrderAlternative
+        {
+            internal NameOrderAlternative(IReadOnlyList<NameOrderField> fields, bool requiresComma)
+            {
+                Fields = fields ?? Array.Empty<NameOrderField>();
+                RequiresComma = requiresComma;
+            }
+
+            internal IReadOnlyList<NameOrderField> Fields { get; }
+            internal bool RequiresComma { get; }
+        }
+
+        private sealed class Hl7NameComponents
+        {
+            internal Hl7NameComponents(
+                string identifier,
+                string familyName,
+                string givenName,
+                string furtherGivenNames,
+                string suffix,
+                string prefix)
+            {
+                Identifier = identifier ?? string.Empty;
+                FamilyName = familyName ?? string.Empty;
+                GivenName = givenName ?? string.Empty;
+                FurtherGivenNames = furtherGivenNames ?? string.Empty;
+                Suffix = suffix ?? string.Empty;
+                Prefix = prefix ?? string.Empty;
+            }
+
+            internal string Identifier { get; }
+            internal string FamilyName { get; }
+            internal string GivenName { get; }
+            internal string FurtherGivenNames { get; }
+            internal string Suffix { get; }
+            internal string Prefix { get; }
         }
 
         private sealed class Hl7AddressComponents

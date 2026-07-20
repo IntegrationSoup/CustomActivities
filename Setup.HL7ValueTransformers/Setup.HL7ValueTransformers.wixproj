@@ -4,7 +4,7 @@
     <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
     <InstallerPlatform>x86</InstallerPlatform>
 
-    <PayloadSourceDir>$(MSBuildProjectDirectory)\..\HL7ValueTransformers\bin\$(Configuration)\netstandard2.0\</PayloadSourceDir>
+    <PayloadSourceDir>$(MSBuildProjectDirectory)\..\HL7ValueTransformers\bin\$(Configuration)\net472\</PayloadSourceDir>
     <MainAssemblyPath>$(PayloadSourceDir)HL7ValueTransformers.dll</MainAssemblyPath>
 
     <GeneratedInstallerVersionFile>$(BaseIntermediateOutputPath)$(Configuration)\GeneratedInstallerVersion.wxi</GeneratedInstallerVersionFile>
