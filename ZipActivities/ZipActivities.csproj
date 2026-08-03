@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net48;net6.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RunnerProjectPath>..\ZipActivities.Runner\ZipActivities.Runner.csproj</RunnerProjectPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
+    <ProjectReference Include="..\..\HL7Soup\HL7Parser\HL7SoupIntegrations\HL7SoupIntegrations.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\DeployCustomLibraries.ps1" Link="DeployCustomLibraries.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\ClearAllCustomLibraries.ps1" Link="ClearAllCustomLibraries.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="BuildZipRunner" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true' and '$(TargetFramework)' == 'net48'">
+    <PropertyGroup>
+      <RunnerBuildOutputDirectory>$(MSBuildProjectDirectory)\..\ZipActivities.Runner\bin\$(Configuration)\net48\</RunnerBuildOutputDirectory>
+      <RunnerOutputDirectory>$(TargetDir)ZipActivitiesRunner\</RunnerOutputDirectory>
+    </PropertyGroup>
+    <MSBuild
+      Projects="$(RunnerProjectPath)"
+      Targets="Restore;Build"
+      Properties="Configuration=$(Configuration);TargetFramework=net48" />
+    <RemoveDir Directories="$(RunnerOutputDirectory)" />
+    <ItemGroup>
+      <RunnerFiles Include="$(RunnerBuildOutputDirectory)**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(RunnerOutputDirectory)" />
+    <Copy
+      SourceFiles="@(RunnerFiles)"
+      DestinationFiles="@(RunnerFiles->'$(RunnerOutputDirectory)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

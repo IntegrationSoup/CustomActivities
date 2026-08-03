@@ -64,6 +64,12 @@ if not exist "%SOURCE_ROOT%Setup.EncryptionActivities\bin\Release\IntegrationSou
     exit /b 1
 )
 
+if not exist "%SOURCE_ROOT%Setup.ZipActivities\bin\Release\IntegrationSoup.ZipActivities.msi" (
+    echo Missing installer:
+    echo   %SOURCE_ROOT%Setup.ZipActivities\bin\Release\IntegrationSoup.ZipActivities.msi
+    exit /b 1
+)
+
 echo Copying IntegrationSoup.HtmlToPdfActivities.msi
 copy /Y "%SOURCE_ROOT%Setup.HtmlToPdfActivities\bin\Release\IntegrationSoup.HtmlToPdfActivities.msi" "%DESTINATION%\IntegrationSoup.HtmlToPdfActivities.msi" >nul || exit /b 1
 
@@ -90,6 +96,9 @@ copy /Y "%SOURCE_ROOT%Setup.SftpActivities\bin\Release\IntegrationSoup.SftpActiv
 
 echo Copying IntegrationSoup.EncryptionActivities.msi
 copy /Y "%SOURCE_ROOT%Setup.EncryptionActivities\bin\Release\IntegrationSoup.EncryptionActivities.msi" "%DESTINATION%\IntegrationSoup.EncryptionActivities.msi" >nul || exit /b 1
+
+echo Copying IntegrationSoup.ZipActivities.msi
+copy /Y "%SOURCE_ROOT%Setup.ZipActivities\bin\Release\IntegrationSoup.ZipActivities.msi" "%DESTINATION%\IntegrationSoup.ZipActivities.msi" >nul || exit /b 1
 
 echo.
 echo Installers copied to:

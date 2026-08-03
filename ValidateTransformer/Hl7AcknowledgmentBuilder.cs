@@ -17,10 +17,27 @@ namespace ValidateTransformer
                 throw new Exception("Cannot generate an HL7 ACK because the inbound message does not have an MSH segment.");
             }
 
-            return Build(msh.Text, outcome);
+            MshFieldValues mshFields = new MshFieldValues
+            {
+                EncodingCharacters = msh.GetFieldValue(2),
+                SendingApplication = msh.GetFieldValue(3),
+                SendingFacility = msh.GetFieldValue(4),
+                ReceivingApplication = msh.GetFieldValue(5),
+                ReceivingFacility = msh.GetFieldValue(6),
+                TriggerEvent = msh.GetComponentValue(9, 2),
+                MessageControlId = msh.GetFieldValue(10),
+                Version = msh.GetFieldValue(12)
+            };
+
+            return Build(msh.Text, outcome, mshFields);
         }
 
         internal static string Build(string inboundMsh, ValidationOutcome outcome)
+        {
+            return Build(inboundMsh, outcome, null);
+        }
+
+        private static string Build(string inboundMsh, ValidationOutcome outcome, MshFieldValues mshFields)
         {
             if (string.IsNullOrWhiteSpace(inboundMsh) || inboundMsh.Length < 4 || !inboundMsh.StartsWith("MSH", StringComparison.Ordinal))
             {
@@ -30,22 +47,28 @@ namespace ValidateTransformer
             outcome = outcome ?? new ValidationOutcome { AcknowledgmentCode = "AA" };
             char fieldSeparator = inboundMsh[3];
             string[] fields = inboundMsh.TrimEnd('\r', '\n').Split(new[] { fieldSeparator }, StringSplitOptions.None);
-            string encodingCharacters = fields.Length > 1 && fields[1].Length >= 4 ? fields[1] : "^~\\&";
+            string encodingCharacters = mshFields == null ? GetField(fields, 1) : mshFields.EncodingCharacters;
+            if (string.IsNullOrEmpty(encodingCharacters) || encodingCharacters.Length < 4)
+            {
+                encodingCharacters = "^~\\&";
+            }
             char componentSeparator = encodingCharacters[0];
             char repetitionSeparator = encodingCharacters[1];
             char escapeCharacter = encodingCharacters[2];
             char subcomponentSeparator = encodingCharacters[3];
             char? truncationCharacter = encodingCharacters.Length > 4 ? (char?)encodingCharacters[4] : null;
 
-            string inboundSendingApplication = GetField(fields, 2);
-            string inboundSendingFacility = GetField(fields, 3);
+            string inboundSendingApplication = mshFields == null ? GetField(fields, 2) : mshFields.SendingApplication;
+            string inboundSendingFacility = mshFields == null ? GetField(fields, 3) : mshFields.SendingFacility;
+            string inboundReceivingApplication = mshFields == null ? GetField(fields, 4) : mshFields.ReceivingApplication;
+            string inboundReceivingFacility = mshFields == null ? GetField(fields, 5) : mshFields.ReceivingFacility;
             if (fields.Length > 2)
             {
-                fields[2] = GetField(fields, 4);
+                fields[2] = inboundReceivingApplication;
             }
             if (fields.Length > 3)
             {
-                fields[3] = GetField(fields, 5);
+                fields[3] = inboundReceivingFacility;
             }
             if (fields.Length > 4)
             {
@@ -56,6 +79,8 @@ namespace ValidateTransformer
                 fields[5] = inboundSendingFacility;
             }
 
+            string versionField = mshFields == null ? GetField(fields, 11) : mshFields.Version;
+            ErrFormat errFormat = GetErrFormat(versionField, componentSeparator);
             if (fields.Length > 8)
             {
                 string[] messageType = fields[8].Split(new[] { componentSeparator }, StringSplitOptions.None);
@@ -67,6 +92,14 @@ namespace ValidateTransformer
                 {
                     messageType[0] = "ACK";
                 }
+                if (messageType.Length > 1 && mshFields != null)
+                {
+                    messageType[1] = mshFields.TriggerEvent ?? string.Empty;
+                }
+                if (errFormat == ErrFormat.Modern && messageType.Length < 3)
+                {
+                    Array.Resize(ref messageType, 3);
+                }
                 if (messageType.Length > 2)
                 {
                     messageType[2] = "ACK";
@@ -77,7 +110,7 @@ namespace ValidateTransformer
             string acknowledgmentCode = outcome.HasErrors ? "AE" : "AA";
             outcome.AcknowledgmentCode = acknowledgmentCode;
             // MSA-2 identifies the inbound message and must echo MSH-10 exactly as encoded.
-            string messageControlId = GetField(fields, 9);
+            string messageControlId = mshFields == null ? GetField(fields, 9) : mshFields.MessageControlId;
             string ackMsh = string.Join(fieldSeparator.ToString(), fields);
             string msa = "MSA" + fieldSeparator + acknowledgmentCode + fieldSeparator + messageControlId;
 
@@ -99,7 +132,6 @@ namespace ValidateTransformer
             List<string> segments = new List<string> { ackMsh, msa };
             if (outcome.HasErrors && outcome.Errors.Count > 0)
             {
-                ErrFormat errFormat = GetErrFormat(GetField(fields, 11), componentSeparator);
                 if (errFormat == ErrFormat.Modern)
                 {
                     foreach (ValidationError error in outcome.Errors)
@@ -376,6 +408,25 @@ namespace ValidateTransformer
             BasicLegacy,
             DetailedLegacy,
             Modern
+        }
+
+        private sealed class MshFieldValues
+        {
+            internal string EncodingCharacters { get; set; }
+
+            internal string SendingApplication { get; set; }
+
+            internal string SendingFacility { get; set; }
+
+            internal string ReceivingApplication { get; set; }
+
+            internal string ReceivingFacility { get; set; }
+
+            internal string TriggerEvent { get; set; }
+
+            internal string MessageControlId { get; set; }
+
+            internal string Version { get; set; }
         }
     }
 }

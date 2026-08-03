@@ -1,0 +1,18 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs/include">
+  <?define ProductDisplayName = "Integration Soup ZIP Activities Extension Library" ?>
+  <?define ProductDescription = "Installs the ZIP file creation and extraction extension library for Integration Soup." ?>
+  <?define CompanyName = "Popokey" ?>
+  <?define CompanyFullName = "Popokey Limited" ?>
+  <?define Copyright = "Popokey Limited" ?>
+
+  <?define IntegrationHostServerFolderName = "Integration Host Server" ?>
+  <?define HL7SoupFolderName = "HL7 Soup" ?>
+  <?define IntegrationWorkflowDesignerFolderName = "Integration Workflow Designer" ?>
+  <?define CustomLibrariesFolderName = "Custom Libraries" ?>
+
+  <?define ActivityFileName = "ZipActivities.dll" ?>
+  <?define RunnerFolderName = "ZipActivitiesRunner" ?>
+  <?define RunnerExecutableName = "ZipActivitiesRunner.exe" ?>
+  <?define RunnerConfigFileName = "ZipActivitiesRunner.exe.config" ?>
+  <?define UpgradeCode = "{2A66A1F7-7CCD-45C4-98F4-D5CCFB2E2E62}" ?>
+</Include>

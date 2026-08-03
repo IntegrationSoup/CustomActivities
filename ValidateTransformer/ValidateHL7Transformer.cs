@@ -9,20 +9,39 @@ namespace ValidateTransformer
     [OutMessage(ValidationActivitySamples.JsonResponse, TypeOfMessages.JSON)]
     [DisplayName("Validate HL7 Message")]
     [Parameter("Profile", "The name of the validation set", isRequired: true)]
+    [Parameter(ValidationActivity.ErrorIfInvalidParameterName, "Mark Workflow Error on Invalid", isRequired: false)]
+    [ParameterUi(ValidationActivity.ErrorIfInvalidParameterName, EditorType = "Checkbox")]
     public class ValidateHL7Transformer : CustomActivity
     {
         public override void Process(IWorkflowInstance workflowInstance, IActivityInstance activityInstance, Dictionary<string, string> parameters)
         {
             string profile = ValidationActivity.GetRequiredProfile(parameters);
-            IHL7Message hl7Message = ValidationActivity.GetRequiredInputMessage(activityInstance, nameof(ValidateHL7Transformer));
-            IJsonMessage responseMessage = activityInstance.ResponseMessage as IJsonMessage;
-            if (responseMessage == null)
+            bool errorIfInvalid = ValidationActivity.GetErrorIfInvalid(parameters);
+            IDisposable ownedInputMessage;
+            IHL7Message hl7Message = ValidationActivity.GetRequiredInputMessage(
+                workflowInstance,
+                activityInstance,
+                nameof(ValidateHL7Transformer),
+                out ownedInputMessage);
+            try
             {
-                throw new Exception("ValidateHL7Transformer requires a JSON response message.");
-            }
+                IJsonMessage responseMessage = activityInstance.ResponseMessage as IJsonMessage;
+                if (responseMessage == null)
+                {
+                    throw new Exception("ValidateHL7Transformer requires a JSON response message.");
+                }
 
-            ValidationOutcome outcome = ValidationActivity.Validate(hl7Message, profile);
-            responseMessage.SetText(ValidationJson.Serialize(outcome));
+                ValidationOutcome outcome = ValidationActivity.Validate(hl7Message, profile);
+                responseMessage.SetText(ValidationJson.Serialize(outcome));
+                ValidationActivity.HandleInvalidOutcome(workflowInstance, responseMessage, outcome, errorIfInvalid, promoteResponse: false);
+            }
+            finally
+            {
+                if (ownedInputMessage != null)
+                {
+                    ownedInputMessage.Dispose();
+                }
+            }
         }
     }
 }

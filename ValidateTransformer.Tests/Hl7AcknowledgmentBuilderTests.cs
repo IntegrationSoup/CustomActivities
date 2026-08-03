@@ -52,11 +52,47 @@ public sealed class Hl7AcknowledgmentBuilderTests
         ValidationOutcome outcome = BuildMissingFieldOutcome();
 
         string ack = Hl7AcknowledgmentBuilder.Build(msh, outcome);
-        string err = ack.Split('\r')[2];
+        string[] segments = ack.Split('\r');
+        string err = segments[2];
 
+        Assert.Contains("||ACK^A01^ACK|MSG123|P|2.5.1", segments[0]);
         Assert.StartsWith("ERR||MSH^1^15|101^Required field missing^HL70357|E|PROFILE_REQUIRED^Required by validation profile^L||", err);
         Assert.Contains("Path: MSH-15", err);
         Assert.EndsWith("|MSH-15: is not in message", err);
+    }
+
+    [Fact]
+    public void V251_ack_adds_ack_message_structure_when_inbound_msh_9_has_two_components()
+    {
+        const string msh = "MSH|^~\\&|HL7Soup|Instance1|HL7Soup|Instance2|201005221610||VXR^V03|20100522MA53|T|2.5.1|||AL";
+        ValidationOutcome outcome = ValidationOutcomeBuilder.Build(
+            "{\"Profile\":\"Test for invalid dates\",\"Errors\":[{\"Path\":\"MSH-9.1\",\"Reason\":\"not equal to ADT\"}]}",
+            "Test for invalid dates");
+
+        string ack = Hl7AcknowledgmentBuilder.Build(msh, outcome);
+
+        Assert.Equal(
+            "MSH|^~\\&|HL7Soup|Instance2|HL7Soup|Instance1|201005221610||ACK^V03^ACK|20100522MA53|T|2.5.1|||AL",
+            ack.Split('\r')[0]);
+        Assert.Single(ack.Split('\r'), segment => segment.StartsWith("ERR||", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void V251_ack_emits_one_err_segment_for_each_validation_error()
+    {
+        const string msh = "MSH|^~\\&|Sender|SendFac|Receiver|RecvFac|20260720120000||ADT^A01|MSG123|P|2.5.1";
+        ValidationOutcome outcome = ValidationOutcomeBuilder.Build(
+            "{\"Profile\":\"Profile\",\"Errors\":[{\"Path\":\"MSH-15\",\"Reason\":\"is not in message\"},{\"Path\":\"PID-5.1\",\"Reason\":\"is not equal to expected\"}]}",
+            "Profile");
+
+        string[] errSegments = Hl7AcknowledgmentBuilder.Build(msh, outcome)
+            .Split('\r')
+            .Where(segment => segment.StartsWith("ERR||", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Equal(2, errSegments.Length);
+        Assert.Contains("MSH^1^15", errSegments[0]);
+        Assert.Contains("PID^1^5^^1", errSegments[1]);
     }
 
     [Fact]
@@ -81,7 +117,7 @@ public sealed class Hl7AcknowledgmentBuilderTests
         string ack = Hl7AcknowledgmentBuilder.Build(msh, outcome);
         string[] segments = ack.Split('\r');
 
-        Assert.StartsWith("MSH*$%!\\*Receiver*RecvFac*Sender*SendFac*20260720120000**ACK$A01*MSG123*P*2.5.1", segments[0]);
+        Assert.StartsWith("MSH*$%!\\*Receiver*RecvFac*Sender*SendFac*20260720120000**ACK$A01$ACK*MSG123*P*2.5.1", segments[0]);
         Assert.StartsWith("MSA*AE*MSG123*PID-5.1: bad !F! !S! !R! !E! value", segments[1]);
         Assert.StartsWith("ERR**PID$1$5$$1*102$Data type error$HL70357*E*PROFILE_RULE$Validation profile rule failed$L**", segments[2]);
         Assert.Contains("Profile !F! !S! !R! !E! slash", segments[2]);

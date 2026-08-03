@@ -13,6 +13,10 @@ This repository contains Integration Soup extension libraries, their out-of-proc
   - shared named-pipe/process-lifetime code for the persistent runner model
 - `Setup.*`
   - WiX installer projects for shipping extension libraries
+- `ZipActivities` / `ZipActivities.Runner`
+  - ZIP file creation, binary ZIP message creation, and safe archive extraction activities
+  - [Website tutorial](https://www.integrationsoup.com/ExtensionLibraries/ZipActivities.html)
+  - [Product documentation](https://integrationsoup.github.io/Documentation/integration-workflows/extension-libraries/zip-activities/)
 - `CopyInstallersToDownloadsReadyforDownloadDelpoyment.cmd`
   - copies finished MSIs to the website downloads staging folder
 

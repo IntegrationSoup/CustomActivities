@@ -11,6 +11,7 @@
   - `AmazonActivities`
   - `HL7SoupEncryptionActivities`
   - `SftpActivities`
+  - `ZipActivities`
 
 ## Runtime Contract
 - DLL-side calls are synchronous. Do not convert them to fire-and-forget behavior.
