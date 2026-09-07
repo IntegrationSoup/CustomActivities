@@ -78,13 +78,13 @@ namespace ZipActivities.Runner
             const string provider = "popokey.zipactivities";
             if (string.Equals(operation, ExtensionBridgeProtocol.Describe, StringComparison.OrdinalIgnoreCase))
             {
-                ExtensionDescribeRequest request = PersistentRunnerJson.Deserialize<ExtensionDescribeRequest>(payloadJson);
-                if (request == null || request.SchemaVersion != 1 || (!string.IsNullOrEmpty(request.ProviderId) && !string.Equals(request.ProviderId, provider, StringComparison.Ordinal))) throw new InvalidOperationException("Unknown ZIP provider or describe schema.");
+                ExtensionDescribeRequest bridgeRequest = PersistentRunnerJson.Deserialize<ExtensionDescribeRequest>(payloadJson);
+                if (bridgeRequest == null || bridgeRequest.SchemaVersion != 1 || (!string.IsNullOrEmpty(bridgeRequest.ProviderId) && !string.Equals(bridgeRequest.ProviderId, provider, StringComparison.Ordinal))) throw new InvalidOperationException("Unknown ZIP provider or describe schema.");
                 return PersistentRunnerJson.Serialize(new ExtensionDescribeResult { ProviderId = provider, ProviderVersion = "5.0.0.1", Extensions = new List<ExtensionDescriptor> { Descriptor("ZipActivities.CreateZipMessage, ZipActivities", "Create ZIP Message"), Descriptor("ZipActivities.CreateZipFile, ZipActivities", "Create ZIP File"), Descriptor("ZipActivities.ExtractZipFile, ZipActivities", "Extract ZIP File") } });
             }
             if (string.Equals(operation, ExtensionBridgeProtocol.Cancel, StringComparison.OrdinalIgnoreCase))
             {
-                ExtensionCancelRequest request = PersistentRunnerJson.Deserialize<ExtensionCancelRequest>(payloadJson); if (request == null || request.SchemaVersion != 1 || !string.Equals(request.ProviderId, provider, StringComparison.Ordinal)) throw new InvalidOperationException("Unknown ZIP provider or cancel schema."); return PersistentRunnerJson.Serialize(new ExtensionCancelResult { Acknowledged = true });
+                ExtensionCancelRequest bridgeRequest = PersistentRunnerJson.Deserialize<ExtensionCancelRequest>(payloadJson); if (bridgeRequest == null || bridgeRequest.SchemaVersion != 1 || !string.Equals(bridgeRequest.ProviderId, provider, StringComparison.Ordinal)) throw new InvalidOperationException("Unknown ZIP provider or cancel schema."); return PersistentRunnerJson.Serialize(new ExtensionCancelResult { Acknowledged = true });
             }
             ExtensionInvokeRequest invoke = PersistentRunnerJson.Deserialize<ExtensionInvokeRequest>(payloadJson);
             if (!string.Equals(operation, ExtensionBridgeProtocol.Invoke, StringComparison.OrdinalIgnoreCase) || invoke == null || invoke.SchemaVersion != 1 || !string.Equals(invoke.ProviderId, provider, StringComparison.Ordinal) || !string.Equals(invoke.Kind, "Activity", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(invoke.Phase)) throw new InvalidOperationException("Invalid ZIP invocation.");
