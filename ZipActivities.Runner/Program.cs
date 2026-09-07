@@ -1,5 +1,7 @@
 using Popokey.ExtensionRunners;
+using HL7Soup.Integrations.ExtensionBridge;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -14,7 +16,7 @@ namespace ZipActivities.Runner
 
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest, HandleBridgeRequest);
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;
@@ -70,6 +72,29 @@ namespace ZipActivities.Runner
             ZipResponse response = Execute(operation, request);
             return PersistentRunnerJson.Serialize(response);
         }
+
+        private static string HandleBridgeRequest(string operation, string payloadJson, string requestId)
+        {
+            const string provider = "popokey.zipactivities";
+            if (string.Equals(operation, ExtensionBridgeProtocol.Describe, StringComparison.OrdinalIgnoreCase))
+            {
+                ExtensionDescribeRequest request = PersistentRunnerJson.Deserialize<ExtensionDescribeRequest>(payloadJson);
+                if (request == null || request.SchemaVersion != 1 || (!string.IsNullOrEmpty(request.ProviderId) && !string.Equals(request.ProviderId, provider, StringComparison.Ordinal))) throw new InvalidOperationException("Unknown ZIP provider or describe schema.");
+                return PersistentRunnerJson.Serialize(new ExtensionDescribeResult { ProviderId = provider, ProviderVersion = "5.0.0.1", Extensions = new List<ExtensionDescriptor> { Descriptor("ZipActivities.CreateZipMessage, ZipActivities", "Create ZIP Message"), Descriptor("ZipActivities.CreateZipFile, ZipActivities", "Create ZIP File"), Descriptor("ZipActivities.ExtractZipFile, ZipActivities", "Extract ZIP File") } });
+            }
+            if (string.Equals(operation, ExtensionBridgeProtocol.Cancel, StringComparison.OrdinalIgnoreCase))
+            {
+                ExtensionCancelRequest request = PersistentRunnerJson.Deserialize<ExtensionCancelRequest>(payloadJson); if (request == null || request.SchemaVersion != 1 || !string.Equals(request.ProviderId, provider, StringComparison.Ordinal)) throw new InvalidOperationException("Unknown ZIP provider or cancel schema."); return PersistentRunnerJson.Serialize(new ExtensionCancelResult { Acknowledged = true });
+            }
+            ExtensionInvokeRequest invoke = PersistentRunnerJson.Deserialize<ExtensionInvokeRequest>(payloadJson);
+            if (!string.Equals(operation, ExtensionBridgeProtocol.Invoke, StringComparison.OrdinalIgnoreCase) || invoke == null || invoke.SchemaVersion != 1 || !string.Equals(invoke.ProviderId, provider, StringComparison.Ordinal) || !string.Equals(invoke.Kind, "Activity", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(invoke.Phase)) throw new InvalidOperationException("Invalid ZIP invocation.");
+            if (!string.Equals(invoke.Phase, "Process", StringComparison.OrdinalIgnoreCase)) return PersistentRunnerJson.Serialize(new ExtensionInvokeResult());
+            ZipRequest request = new ZipRequest(); foreach (ExtensionNamedValue pair in invoke.Parameters ?? new List<ExtensionNamedValue>()) { bool value; if (pair.Name == "Source Directory") request.SourceDirectory = pair.Value; else if (pair.Name == "ZIP File Path") request.ZipFilePath = pair.Value; else if (pair.Name == "Destination Directory") request.DestinationDirectory = pair.Value; else if (pair.Name == "Include Base Directory" && bool.TryParse(pair.Value, out value)) request.IncludeBaseDirectory = value; else if (pair.Name == "Overwrite Existing File" && bool.TryParse(pair.Value, out value)) request.OverwriteExistingFile = value; else if (pair.Name == "Overwrite Existing Files" && bool.TryParse(pair.Value, out value)) request.OverwriteExistingFiles = value; }
+            string legacyOperation = invoke.TypeName.IndexOf("CreateZipMessage", StringComparison.Ordinal) >= 0 ? "create-zip-message" : invoke.TypeName.IndexOf("CreateZipFile", StringComparison.Ordinal) >= 0 ? "create-zip-file" : invoke.TypeName.IndexOf("ExtractZipFile", StringComparison.Ordinal) >= 0 ? "extract-zip-file" : null; if (legacyOperation == null) throw new InvalidOperationException("Unknown ZIP activity type.");
+            ZipResponse response = Execute(legacyOperation, request); return PersistentRunnerJson.Serialize(new ExtensionInvokeResult { ResponseMessage = new ExtensionMessage { MessageType = invoke.TypeName.IndexOf("CreateZipMessage", StringComparison.Ordinal) >= 0 ? 5 : 1, Text = response.OutputBase64 ?? response.Message } });
+        }
+
+        private static ExtensionDescriptor Descriptor(string typeName, string displayName) { return new ExtensionDescriptor { Kind = "Activity", TypeName = typeName, DisplayName = displayName, LegacyTypeNames = new List<string> { typeName }, RequiredContextCapabilities = new List<string> { ExtensionBridgeProtocol.MessageContextCapability } }; }
 
         private static ZipResponse Execute(string operation, ZipRequest request)
         {
