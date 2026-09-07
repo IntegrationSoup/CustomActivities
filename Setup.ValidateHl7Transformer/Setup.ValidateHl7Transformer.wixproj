@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputName>IntegrationSoup.ValidateHl7Transformer</OutputName>
     <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
-    <InstallerPlatform>x86</InstallerPlatform>
+    <InstallerPlatform>x64</InstallerPlatform>
 
     <PayloadSourceDir>$(MSBuildProjectDirectory)\..\ValidateTransformer\bin\$(Configuration)\netstandard2.0\</PayloadSourceDir>
     <MainAssemblyPath>$(PayloadSourceDir)ValidateTransformer.dll</MainAssemblyPath>
@@ -36,14 +36,14 @@
 
   <Target Name="SignPayloads"
           AfterTargets="ResolveReferences"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
     <Exec Condition="Exists('$(MainAssemblyPath)')"
           Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) &quot;$(MainAssemblyPath)&quot;" />
   </Target>
 
   <Target Name="SignMsiOutput"
           AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
     <ItemGroup>
       <_Msi Include="$(MSBuildProjectDirectory)\bin\$(Configuration)\**\*.msi" />
     </ItemGroup>
@@ -61,4 +61,11 @@
     <None Include="ProductVariables.wxi" />
     <None Include="..\InstallerTools\GenerateInstallerVersion.ps1" Link="GenerateInstallerVersion.ps1" />
   </ItemGroup>
+  <PropertyGroup>
+    <BridgeRunnerProject>ValidateTransformer.Runner</BridgeRunnerProject>
+    <BridgeExecutableName>ValidateTransformerRunner.exe</BridgeExecutableName>
+    <BridgeProviderId>popokey.validatehl7transformer</BridgeProviderId>
+    <BridgeTargetFramework>net10.0-windows</BridgeTargetFramework>
+  </PropertyGroup>
+  <Import Project="../InstallerTools/BridgeInstaller.targets" />
 </Project>

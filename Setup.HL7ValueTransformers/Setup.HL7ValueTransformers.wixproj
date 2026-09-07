@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputName>IntegrationSoup.HL7ValueTransformers</OutputName>
     <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
-    <InstallerPlatform>x86</InstallerPlatform>
+    <InstallerPlatform>x64</InstallerPlatform>
 
     <PayloadSourceDir>$(MSBuildProjectDirectory)\..\HL7ValueTransformers\bin\$(Configuration)\net472\</PayloadSourceDir>
     <MainAssemblyPath>$(PayloadSourceDir)HL7ValueTransformers.dll</MainAssemblyPath>
@@ -63,4 +63,11 @@
     <None Include="ProductVariables.wxi" />
     <None Include="..\InstallerTools\GenerateInstallerVersion.ps1" Link="GenerateInstallerVersion.ps1" />
   </ItemGroup>
+  <PropertyGroup>
+    <BridgeRunnerProject>HL7ValueTransformers.Runner</BridgeRunnerProject>
+    <BridgeExecutableName>HL7ValueTransformersRunner.exe</BridgeExecutableName>
+    <BridgeProviderId>popokey.hl7valuetransformers</BridgeProviderId>
+    <BridgeTargetFramework>net48</BridgeTargetFramework>
+  </PropertyGroup>
+  <Import Project="../InstallerTools/BridgeInstaller.targets" />
 </Project>

@@ -11,5 +11,6 @@
 
 # Test/build artifacts
 TestResults/
+artifacts/
 *.nupkg
 *.snupkg

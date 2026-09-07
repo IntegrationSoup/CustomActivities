@@ -18,7 +18,7 @@ namespace HL7SoupEncryptionActivities.Runner
 
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.encryptionactivities", "HL7SoupEncryptionActivities", HandleServerRequest, typeof(HL7SoupEncryptionActivities.EncryptMessage), typeof(HL7SoupEncryptionActivities.DecryptMessage)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;

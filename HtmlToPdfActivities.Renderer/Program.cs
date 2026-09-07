@@ -23,7 +23,7 @@ namespace HtmlToPdfActivities.Renderer
         {
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.htmltopdf", "HtmlToPdfActivities", HandleServerRequest, typeof(HtmlToPdfActivities.HtmlToPdfConverter)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;

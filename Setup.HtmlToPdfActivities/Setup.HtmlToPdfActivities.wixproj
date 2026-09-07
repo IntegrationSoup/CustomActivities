@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputName>IntegrationSoup.HtmlToPdfActivities</OutputName>
     <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
-    <InstallerPlatform>x86</InstallerPlatform>
+    <InstallerPlatform>x64</InstallerPlatform>
 
     <CustomActivitiesTargetDir>$(MSBuildProjectDirectory)\..\HtmlToPdfActivities\bin\$(Configuration)\net48\</CustomActivitiesTargetDir>
     <RendererTargetDir>$(CustomActivitiesTargetDir)HtmlToPdfRenderer\</RendererTargetDir>
@@ -38,7 +38,7 @@
 
   <Target Name="SignPayloads"
           AfterTargets="ResolveReferences"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
     <ItemGroup>
       <_Sign Include="$(CustomActivitiesTargetDir)HtmlToPdfActivities.dll" />
       <_Sign Include="$(RendererTargetDir)HtmlToPdfRenderer.exe" />
@@ -50,7 +50,7 @@
 
   <Target Name="SignMsiOutput"
           AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
     <ItemGroup>
       <_Msi Include="$(MSBuildProjectDirectory)\bin\$(Configuration)\**\*.msi" />
     </ItemGroup>
@@ -68,4 +68,11 @@
     <None Include="ProductVariables.wxi" />
     <None Include="GenerateInstallerVersion.ps1" />
   </ItemGroup>
+  <PropertyGroup>
+    <BridgeRunnerProject>HtmlToPdfActivities.Renderer</BridgeRunnerProject>
+    <BridgeExecutableName>HtmlToPdfRenderer.exe</BridgeExecutableName>
+    <BridgeProviderId>popokey.htmltopdf</BridgeProviderId>
+    <BridgeTargetFramework>net48</BridgeTargetFramework>
+  </PropertyGroup>
+  <Import Project="../InstallerTools/BridgeInstaller.targets" />
 </Project>

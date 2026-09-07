@@ -13,4 +13,6 @@
     <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <PropertyGroup><BridgeAdapterSource>$(MSBuildProjectDirectory)/../HtmlToPdfActivities</BridgeAdapterSource></PropertyGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
 </Project>

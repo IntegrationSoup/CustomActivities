@@ -15,4 +15,6 @@
     <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
 
+  <PropertyGroup><BridgeAdapterSource>$(MSBuildProjectDirectory)/../ZipActivities</BridgeAdapterSource></PropertyGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
 </Project>

@@ -7,6 +7,9 @@ namespace Popokey.ExtensionRunners
     {
         internal static string ResolveExecutablePath(Type anchorType, string environmentVariableName, string runnerDirectoryName, string executableName, string runnerDescription)
         {
+#if EXTENSION_BRIDGE_RUNNER
+            return System.Reflection.Assembly.GetExecutingAssembly().Location;
+#else
             if (anchorType == null)
             {
                 throw new ArgumentNullException(nameof(anchorType));
@@ -44,6 +47,7 @@ namespace Popokey.ExtensionRunners
 
             throw new FileNotFoundException(
                 $"The {runnerDescription} executable could not be found. Place '{executableName}' under a '{runnerDirectoryName}' folder beside the activity DLL, or set {environmentVariableName}.");
+#endif
         }
     }
 }

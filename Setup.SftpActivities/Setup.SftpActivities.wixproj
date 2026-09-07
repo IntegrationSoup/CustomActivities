@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputName>IntegrationSoup.SftpActivities</OutputName>
     <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
-    <InstallerPlatform>x86</InstallerPlatform>
+    <InstallerPlatform>x64</InstallerPlatform>
 
     <ActivitySourceDir>$(MSBuildProjectDirectory)\..\SftpActivities\bin\$(Configuration)\net48\</ActivitySourceDir>
     <RunnerSourceDir>$(ActivitySourceDir)SftpActivitiesRunner\</RunnerSourceDir>
@@ -47,7 +47,7 @@
 
   <Target Name="SignPayloads"
           AfterTargets="ResolveReferences"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
     <ItemGroup>
       <_Sign Include="$(MainAssemblyPath)" />
       <_Sign Include="$(RunnerExecutablePath)" />
@@ -59,7 +59,7 @@
 
   <Target Name="SignMsiOutput"
           AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
     <ItemGroup>
       <_Msi Include="$(MSBuildProjectDirectory)\bin\$(Configuration)\**\*.msi" />
     </ItemGroup>
@@ -77,4 +77,11 @@
     <None Include="ProductVariables.wxi" />
     <None Include="..\InstallerTools\GenerateInstallerVersion.ps1" Link="GenerateInstallerVersion.ps1" />
   </ItemGroup>
+  <PropertyGroup>
+    <BridgeRunnerProject>SftpActivities.Runner</BridgeRunnerProject>
+    <BridgeExecutableName>SftpActivitiesRunner.exe</BridgeExecutableName>
+    <BridgeProviderId>popokey.sftpactivities</BridgeProviderId>
+    <BridgeTargetFramework>net48</BridgeTargetFramework>
+  </PropertyGroup>
+  <Import Project="../InstallerTools/BridgeInstaller.targets" />
 </Project>

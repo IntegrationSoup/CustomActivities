@@ -20,7 +20,7 @@ namespace RtfToPdfActivities.Renderer
         {
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.rtftopdf", "RtfToPdfActivities", HandleServerRequest, typeof(RtfToPdfActivities.RtfToPdfConverter)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;

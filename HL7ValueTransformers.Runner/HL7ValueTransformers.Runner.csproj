@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>HL7ValueTransformersRunner</AssemblyName>
+    <BridgeAdapterSource>$(MSBuildProjectDirectory)/../HL7ValueTransformers</BridgeAdapterSource>
+  </PropertyGroup>
+  <ItemGroup><Compile Include="../ExtensionRunnerHosting/*.cs" Link="ExtensionRunnerHosting/%(Filename)%(Extension)" /></ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>

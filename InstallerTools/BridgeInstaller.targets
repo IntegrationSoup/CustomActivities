@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <BridgeRevision Condition="'$(BridgeRevision)' == ''">$(InstallerVersion)</BridgeRevision>
+    <BridgeGeneratedDirectory>$(MSBuildProjectDirectory)/obj/$(Configuration)/bridge</BridgeGeneratedDirectory>
+    <BridgeWriterPath>$(MSBuildThisFileDirectory)BridgeManifestWriter/bin/$(Configuration)/net48/BridgeManifestWriter.exe</BridgeWriterPath>
+    <BridgePayloadSource>$(MSBuildThisFileDirectory)../$(BridgeRunnerProject)/bin/$(Configuration)/$(BridgeTargetFramework)/</BridgePayloadSource>
+    <DefineConstants>$(DefineConstants);BridgePayloadSource=$(BridgePayloadSource)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(BridgeGeneratedDirectory)/BridgeRegistration.wxs" />
+  </ItemGroup>
+  <Target Name="GenerateBridgeRegistration" BeforeTargets="BeforeBuild" DependsOnTargets="GenerateInstallerVersion">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)BridgeManifestWriter/BridgeManifestWriter.csproj" Targets="Restore;Build" Properties="Configuration=$(Configuration)" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)GenerateBridgeInstaller.ps1&quot; -RunnerSourceDir &quot;$(BridgePayloadSource)&quot; -ExecutableName &quot;$(BridgeExecutableName)&quot; -ProviderId &quot;$(BridgeProviderId)&quot; -Revision &quot;$(BridgeRevision)&quot; -InstallerVersionFile &quot;$(MSBuildProjectDirectory)/$(GeneratedInstallerVersionFile)&quot; -OutputDirectory &quot;$(BridgeGeneratedDirectory)&quot; -WriterPath &quot;$(BridgeWriterPath)&quot;" />
+  </Target>
+</Project>

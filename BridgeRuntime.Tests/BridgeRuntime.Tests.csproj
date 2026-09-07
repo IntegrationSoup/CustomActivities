@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0-windows</TargetFramework><LangVersion>latest</LangVersion><StartupObject>RuntimeTests</StartupObject><BridgeAdapterSource>$(MSBuildProjectDirectory)/../ValidateTransformer</BridgeAdapterSource></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ExtensionRunnerHosting/*.cs" Link="Hosting/%(Filename)%(Extension)" />
+    <Compile Include="../ValidateTransformer.Runner/Program.cs" Link="ValidationRunner.cs" />
+    <Compile Include="../RtfToPdfActivities/RtfToPdfConverter.cs" Link="RtfAdapter.cs" />
+    <Compile Include="../AzureActivities/AzureActivities/*.cs;../AmazonActivities/AmazonActivities/*.cs;../SftpActivities/*.cs" Exclude="../AzureActivities/AzureActivities/ParameterUiAttribute.cs;../AmazonActivities/AmazonActivities/ParameterUiAttribute.cs;../SftpActivities/ParameterUiAttribute.cs" />
+  </ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>

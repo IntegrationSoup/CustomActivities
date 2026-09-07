@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);EXTENSION_BRIDGE_RUNNER</DefineConstants>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)*.cs" Link="ExtensionBridgeRuntime/%(Filename)%(Extension)" />
+    <Compile Include="$(MSBuildThisFileDirectory)Metadata/*.cs" Link="ExtensionBridgeRuntime/Metadata/%(Filename)%(Extension)" />
+    <Compile Include="$(BridgeAdapterSource)/*.cs" Exclude="$(BridgeAdapterSource)/ParameterUiAttribute.cs" Link="SourceAdapter/%(Filename)%(Extension)" />
+    <Compile Include="$(MSBuildThisFileDirectory)../ZipActivities/ParameterUiAttribute.cs" Link="SourceAdapter/ParameterUiAttribute.cs" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+</Project>

@@ -15,7 +15,7 @@ namespace SftpActivities.Runner
 
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.sftpactivities", "SftpActivities", HandleServerRequest, typeof(SftpActivities.SftpUpload), typeof(SftpActivities.SftpDownload)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;

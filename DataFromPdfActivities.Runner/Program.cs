@@ -21,7 +21,7 @@ namespace DataFromPdfActivities.Runner
         {
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest, HandleBridgeRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.datafrompdf", "DataFromPdfActivities", HandleServerRequest, typeof(DataFromPdfActivities.DataFromPdfActivity)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;
@@ -85,33 +85,6 @@ namespace DataFromPdfActivities.Runner
             };
 
             return PersistentRunnerJson.Serialize(response);
-        }
-
-        private static string HandleBridgeRequest(string operation, string payloadJson, string requestId)
-        {
-            const string providerId = "popokey.datafrompdf";
-            const string typeName = "DataFromPdfActivities.DataFromPdfActivity, DataFromPdfActivities";
-            if (string.Equals(operation, ExtensionBridgeProtocol.Describe, StringComparison.OrdinalIgnoreCase))
-            {
-                ExtensionDescribeRequest request = PersistentRunnerJson.Deserialize<ExtensionDescribeRequest>(payloadJson);
-                if (request == null || request.SchemaVersion != 1 || (!string.IsNullOrEmpty(request.ProviderId) && !string.Equals(request.ProviderId, providerId, StringComparison.Ordinal)))
-                    throw new InvalidOperationException("Unknown Data from PDF provider or describe schema.");
-                return PersistentRunnerJson.Serialize(new ExtensionDescribeResult { ProviderId = providerId, ProviderVersion = "5.0.0.1", Extensions = new List<ExtensionDescriptor> { new ExtensionDescriptor { Kind = "Activity", TypeName = typeName, DisplayName = "Data from PDF", LegacyTypeNames = new List<string> { typeName }, InMessage = new ExtensionMessageMetadata { MessageType = 5, DefaultMessageType = 5, SampleMessage = "", UserCanEditTemplate = false }, OutMessage = new ExtensionMessageMetadata { MessageType = 7, DefaultMessageType = 3, SampleMessage = "{}", UserCanEditTemplate = true }, SupportedMessageTypes = new List<int> { 5 }, RequiredContextCapabilities = new List<string> { ExtensionBridgeProtocol.MessageContextCapability } } } });
-            }
-            if (string.Equals(operation, ExtensionBridgeProtocol.Cancel, StringComparison.OrdinalIgnoreCase))
-            {
-                ExtensionCancelRequest request = PersistentRunnerJson.Deserialize<ExtensionCancelRequest>(payloadJson);
-                if (request == null || request.SchemaVersion != 1 || !string.Equals(request.ProviderId, providerId, StringComparison.Ordinal)) throw new InvalidOperationException("Unknown Data from PDF provider or cancel schema.");
-                return PersistentRunnerJson.Serialize(new ExtensionCancelResult { Acknowledged = true });
-            }
-            if (!string.Equals(operation, ExtensionBridgeProtocol.Invoke, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Unsupported bridge operation.");
-            ExtensionInvokeRequest invoke = PersistentRunnerJson.Deserialize<ExtensionInvokeRequest>(payloadJson);
-            if (invoke == null || invoke.SchemaVersion != 1 || !string.Equals(invoke.ProviderId, providerId, StringComparison.Ordinal) || !string.Equals(invoke.TypeName, typeName, StringComparison.Ordinal) || !string.Equals(invoke.Kind, "Activity", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(invoke.Phase)) throw new InvalidOperationException("Invalid Data from PDF invocation.");
-            if (!string.Equals(invoke.Phase, "Process", StringComparison.OrdinalIgnoreCase)) return PersistentRunnerJson.Serialize(new ExtensionInvokeResult());
-            if (invoke.Message == null || string.IsNullOrWhiteSpace(invoke.Message.Text)) throw new InvalidOperationException("The inbound binary PDF message was empty.");
-            string value = invoke.Message.Text.Trim(); int marker = value.IndexOf("base64,", StringComparison.OrdinalIgnoreCase); if (marker >= 0) value = value.Substring(marker + 7);
-            string json = PdfDataExtractor.Extract(Convert.FromBase64String(value));
-            return PersistentRunnerJson.Serialize(new ExtensionInvokeResult { ResponseMessage = new ExtensionMessage { MessageType = 3, Text = json } });
         }
 
         [DataContract]

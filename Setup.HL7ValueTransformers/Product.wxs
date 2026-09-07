@@ -22,7 +22,7 @@
     <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
     <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
     <Property Id="INTEGRATIONSOUPSERVICEFOUND">
       <RegistrySearch Id="FindIntegrationSoupHostService"
@@ -63,10 +63,11 @@
       <ComponentRef Id="HL7ValueTransformersPayloadComponent" />
       <ComponentRef Id="ServerServiceRestartComponent" />
       <ComponentRef Id="LegacyServerServiceRestartComponent" />
+      <ComponentGroupRef Id="BridgeProviderComponents" />
     </Feature>
 
     <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
-      <Component Id="HL7ValueTransformersPayloadComponent"
+      <Component Bitness="always32" Id="HL7ValueTransformersPayloadComponent"
                  Guid="{39A65F99-20BA-477B-8DBD-B80E88C79F90}">
         <File Id="HL7ValueTransformersPayloadFile"
               Name="$(var.PayloadFileName)"
@@ -79,7 +80,7 @@
         </File>
       </Component>
 
-      <Component Id="ServerServiceRestartComponent"
+      <Component Bitness="always32" Id="ServerServiceRestartComponent"
                  Guid="{F3043924-D84F-46A2-8C3A-E8677FA8295E}"
                  Condition="INTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
@@ -95,7 +96,7 @@
                         Wait="yes" />
       </Component>
 
-      <Component Id="LegacyServerServiceRestartComponent"
+      <Component Bitness="always32" Id="LegacyServerServiceRestartComponent"
                  Guid="{A7C64891-5772-487B-B847-541E14A1B032}"
                  Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"

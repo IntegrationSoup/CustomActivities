@@ -22,7 +22,7 @@
     <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
     <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
     <Property Id="INTEGRATIONSOUPSERVICEFOUND">
       <RegistrySearch Id="FindIntegrationSoupHostService"
@@ -68,6 +68,8 @@
       <ComponentRef Id="LegacyServerServiceRestartComponent" />
       <ComponentRef Id="SoupActivityDllComponent" />
       <ComponentRef Id="WorkflowDesignerActivityDllComponent" />
+      <ComponentGroupRef Id="BridgeProviderComponents" />
+      <ComponentRef Id="LegacyRunnerBridgeJson" />
     </Feature>
 
     <ComponentGroup Id="RunnerComponents">
@@ -76,14 +78,14 @@
     </ComponentGroup>
 
     <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
-      <Component Id="ServerActivityDllComponent" Guid="{4A398481-5ABB-437D-8278-6A2ECB6281B2}">
+      <Component Bitness="always32" Id="ServerActivityDllComponent" Guid="{4A398481-5ABB-437D-8278-6A2ECB6281B2}">
         <File Id="ServerActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
               KeyPath="yes" />
       </Component>
 
-      <Component Id="ServerServiceRestartComponent"
+      <Component Bitness="always32" Id="ServerServiceRestartComponent"
                  Guid="{D8C614BB-07D0-4147-B65C-691D43675D32}"
                  Condition="INTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
@@ -99,7 +101,7 @@
                         Wait="yes" />
       </Component>
 
-      <Component Id="LegacyServerServiceRestartComponent"
+      <Component Bitness="always32" Id="LegacyServerServiceRestartComponent"
                  Guid="{F1E2E5DC-2B89-4DF0-A931-7E22E7854A3B}"
                  Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
@@ -117,14 +119,14 @@
     </DirectoryRef>
 
     <DirectoryRef Id="SERVERRUNNERFOLDER">
-      <Component Id="RunnerExecutableComponent" Guid="{90FDE04B-5F42-48A3-89B1-796CABFCA25E}">
+      <Component Bitness="always32" Id="RunnerExecutableComponent" Guid="{90FDE04B-5F42-48A3-89B1-796CABFCA25E}">
         <File Id="RunnerExecutableFile"
               Name="$(var.RunnerExecutableName)"
               Source="$(var.RunnerSourceDir)$(var.RunnerExecutableName)"
               KeyPath="yes" />
       </Component>
 
-      <Component Id="RunnerConfigComponent" Guid="{6513E570-8B75-4632-995E-25F16A554F1D}">
+      <Component Bitness="always32" Id="RunnerConfigComponent" Guid="{6513E570-8B75-4632-995E-25F16A554F1D}">
         <File Id="RunnerConfigFile"
               Name="$(var.RunnerConfigFileName)"
               Source="$(var.RunnerSourceDir)$(var.RunnerConfigFileName)"
@@ -133,7 +135,7 @@
     </DirectoryRef>
 
     <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
-      <Component Id="SoupActivityDllComponent" Guid="{CE9E2503-CFA9-4D03-AAEF-99AA9F8768B4}">
+      <Component Bitness="always32" Id="SoupActivityDllComponent" Guid="{CE9E2503-CFA9-4D03-AAEF-99AA9F8768B4}">
         <File Id="SoupActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
@@ -142,7 +144,7 @@
     </DirectoryRef>
 
     <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
-      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{2F928DD4-06D8-489E-90F9-8436A3C8F37C}">
+      <Component Bitness="always32" Id="WorkflowDesignerActivityDllComponent" Guid="{2F928DD4-06D8-489E-90F9-8436A3C8F37C}">
         <File Id="WorkflowDesignerActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.ActivitySourceDir)$(var.ActivityFileName)"
@@ -150,5 +152,10 @@
       </Component>
     </DirectoryRef>
 
+    <DirectoryRef Id="SERVERRUNNERFOLDER">
+      <Component Id="LegacyRunnerBridgeJson" Guid="*" Bitness="always32">
+        <File Source="$(var.BridgePayloadSource)Newtonsoft.Json.dll" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
   </Package>
 </Wix>
