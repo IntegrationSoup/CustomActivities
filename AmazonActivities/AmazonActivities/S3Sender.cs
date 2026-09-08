@@ -14,6 +14,9 @@ namespace AmazonActivities
     [ParameterUi("Secret Access Key", Purpose = "Secret")]
     [InMessage(@"", TypeOfMessages.UserDefined)]
     [OutMessage(@"Code Execute Successfully", TypeOfMessages.Text)]
+#if EXTENSION_BRIDGE_RUNNER
+    [Popokey.ExtensionRunners.ExtensionDesigner(typeof(Popokey.ExtensionRunners.AwsDesigner))]
+#endif
     public class S3Sender : AwsActivityBase
     {
         public override void Process(IWorkflowInstance workflowInstance, IActivityInstance activityInstance, Dictionary<string, string> parameters)

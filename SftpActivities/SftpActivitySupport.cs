@@ -7,6 +7,9 @@ using System.Text;
 
 namespace SftpActivities
 {
+#if EXTENSION_BRIDGE_RUNNER
+    [ExtensionDesigner(typeof(SftpDesigner))]
+#endif
     public abstract class SftpActivityBase : CustomActivity
     {
         protected static SftpActivitySupport.SftpCommandRequest CreateRequest(Dictionary<string, string> parameters, string operation)

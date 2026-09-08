@@ -125,7 +125,7 @@ internal static class Program
             JObject value = (JObject)descriptor[kind + "Message"];
             Equal(Convert.ToInt32(a.GetType().GetProperty("MessageType").GetValue(a)), (int)value["MessageType"], kind + " message type");
             Equal((string)a.GetType().GetProperty(kind == "In" ? "SampleTemplateMessage" : "SampleResponseMessage").GetValue(a), (string)value["SampleMessage"], kind + " sample");
-            Equal(kind == "In" ? (bool)a.GetType().GetProperty("UserCanEditTemplate").GetValue(a) : true, (bool)value["UserCanEditTemplate"], kind + " editability");
+            Equal(kind == "In" ? (bool)a.GetType().GetProperty("UserCanEditTemplate").GetValue(a) : type.FullName == "DataFromPdfActivities.DataFromPdfActivity", (bool)value["UserCanEditTemplate"], kind + " editability (explicit PDF opt-in)");
             if (kind == "Out") Equal(Convert.ToInt32(a.GetType().GetProperty("DefaultMessageType").GetValue(a)), (int)value["DefaultMessageType"], "default response type");
         }
     }

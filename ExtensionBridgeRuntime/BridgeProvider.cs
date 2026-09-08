@@ -18,7 +18,7 @@ namespace Popokey.ExtensionRunners
         internal static BridgeFault Invalid(string message) { return new BridgeFault("InvalidRequest", "NotStarted", message); }
     }
 
-    internal sealed class BridgeProvider
+    internal sealed partial class BridgeProvider
     {
         private readonly string providerId;
         private readonly ExtensionDescribeResult catalog;
@@ -34,7 +34,7 @@ namespace Popokey.ExtensionRunners
         {
             providerId = id;
             legacy = handler;
-            catalog = new ExtensionDescribeResult { ProviderId = id, ProviderVersion = "5.0.0.1" };
+            catalog = new ExtensionDescribeResult { ProviderId = id, ProviderVersion = "5.0.0.2" };
             foreach (Type type in extensionTypes)
             {
                 if (type.IsAbstract) throw new ArgumentException("An extension type cannot be abstract.");
@@ -70,6 +70,9 @@ namespace Popokey.ExtensionRunners
                                 active.Cancellation.Cancel();
                         }
                         payload = PersistentRunnerJson.Serialize(new ExtensionCancelResult { Acknowledged = true });
+                        break;
+                    case ExtensionBridgeProtocol.Designer:
+                        payload = PersistentRunnerJson.Serialize(UpdateDesigner(envelope.RequestId, Parse<ExtensionDesignerRequest>(envelope.PayloadJson)));
                         break;
                     case ExtensionBridgeProtocol.Invoke:
                         payload = PersistentRunnerJson.Serialize(Invoke(envelope.RequestId, Parse<ExtensionInvokeRequest>(envelope.PayloadJson)));
@@ -245,11 +248,13 @@ namespace Popokey.ExtensionRunners
             var input = type.GetCustomAttribute<InMessageAttribute>();
             if (input != null) descriptor.InMessage = new ExtensionMessageMetadata { MessageType = (int)input.MessageType, DefaultMessageType = (int)input.MessageType, SampleMessage = input.SampleTemplateMessage, UserCanEditTemplate = input.UserCanEditTemplate };
             var output = type.GetCustomAttribute<OutMessageAttribute>();
-            if (output != null) descriptor.OutMessage = new ExtensionMessageMetadata { MessageType = (int)output.MessageType, DefaultMessageType = (int)output.DefaultMessageType, SampleMessage = output.SampleResponseMessage, UserCanEditTemplate = true };
+            if (output != null) descriptor.OutMessage = new ExtensionMessageMetadata { MessageType = (int)output.MessageType, DefaultMessageType = (int)output.DefaultMessageType, SampleMessage = output.SampleResponseMessage, UserCanEditTemplate = type.IsDefined(typeof(EditableResponseTemplateAttribute), true) };
             // No source restriction is declared on these transformers. User-defined
             // activities likewise accept every actual message kind in the host.
             descriptor.SupportedMessageTypes = input == null || input.MessageType == TypeOfMessages.UserDefined
                 ? new List<int> { 1, 2, 3, 4, 5, 6, 11, 13, 14, 16 } : new List<int> { (int)input.MessageType };
+            descriptor.Designer = CreateDesigner(type)?.Describe();
+            descriptor.Description = type.GetCustomAttribute<DescriptionAttribute>()?.Description;
             return descriptor;
         }
 

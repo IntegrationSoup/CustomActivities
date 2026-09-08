@@ -96,3 +96,38 @@ over the user's existing v4 packages merely to obtain that evidence.
 
 Manifest custom actions use formatted EXE targets, not a DLL-style
 CustomActionData property. See [Microsoft's Type 2 action contract](https://learn.microsoft.com/en-us/windows/win32/msi/custom-action-type-2).
+
+## Optional designer assistance
+
+The version 5 browser sends `extension.designer` only when the selected declaration
+opts in through `Designer`. Runner-only `ExtensionDesignerAttribute` chooses an
+`IExtensionDesigner`; the v4 DLL keeps its original host API and manual fields.
+The callback receives schema/provider/type identity, a revision, deadline,
+`Initialize`, `FieldChanged` or `Action`, and declared parameter values. Values
+include hidden fields so hiding a field never erases its saved configuration.
+Expressions are passed as authored strings, not evaluated workflow data.
+
+A result contains only declared field patches: optional value, visibility,
+enabled state, choices and validation text. Null leaves that property alone;
+an empty string clears a value or validation message. The browser debounces
+field changes, rejects outdated replies and records returned value changes as
+one undoable draft edit. Presentation state is not stored in the workflow.
+Callbacks are deadline-bounded, serialized with business calls, and never replayed.
+
+SFTP uses field changes to show the passphrase field when a private-key path is
+present. AWS S3 and Azure Blob offer explicit Load buckets / Load containers
+buttons; those read-only requests need literal connection settings and execute
+under the extension host's network permissions. Manual names and credentials
+remain sufficient in every supported designer. Version 4 does not need callbacks
+or additional buttons to configure or run these activities.
+
+Output samples are read-only unless the runner-only
+`EditableResponseTemplateAttribute` opts in. Data from PDF opts in to an editable
+JSON design sample; its binary input and actual extracted JSON are unchanged.
+Run a representative PDF and copy its response from the logs into that sample
+to expose downstream fields without adding a Code activity just for a sample.
+
+For a signed distribution use `InstallerTools/BuildBridgeSignedRelease.ps1` with
+a new installer version. It signs the v4 adapter, v5 runner, manifest helper and
+MSI, verifies publisher/timestamps and records the signed artifact hashes.
+Review-build MSIs are unsigned and must not be used as signed release downloads.

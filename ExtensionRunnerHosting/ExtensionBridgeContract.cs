@@ -11,6 +11,7 @@ namespace HL7Soup.Integrations.ExtensionBridge
         public const int SchemaVersion = 1;
         public const string Describe = "extension.describe";
         public const string Invoke = "extension.invoke";
+        public const string Designer = "extension.designer";
         public const string Cancel = "extension.cancel";
         public const string RegistryPath = @"SOFTWARE\Popokey\IntegrationSoup\ExtensionProviders";
         public const int DefaultMaxMessageBytes = 64 * 1024 * 1024;
@@ -87,6 +88,8 @@ namespace HL7Soup.Integrations.ExtensionBridge
         [DataMember(Order = 8)] public ExtensionMessageMetadata OutMessage { get; set; }
         [DataMember(Order = 9)] public List<int> SupportedMessageTypes { get; set; } = new List<int>();
         [DataMember(Order = 10)] public List<string> RequiredContextCapabilities { get; set; } = new List<string>();
+        [DataMember(Order = 11)] public ExtensionDesignerCapabilities Designer { get; set; }
+        [DataMember(Order = 12)] public string Description { get; set; }
     }
 
     [DataContract]
@@ -120,6 +123,46 @@ namespace HL7Soup.Integrations.ExtensionBridge
     {
         [DataMember(Order = 1)] public string Name { get; set; }
         [DataMember(Order = 2)] public string Value { get; set; }
+    }
+
+public sealed class ExtensionDesignerCapabilities
+    {
+        public bool FieldChanges { get; set; }
+        public List<ExtensionDesignerAction> Actions { get; set; } = new List<ExtensionDesignerAction>();
+    }
+    public sealed class ExtensionDesignerAction
+    {
+        public string Id { get; set; }
+        public string Label { get; set; }
+    }
+    public sealed class ExtensionDesignerRequest
+    {
+        public int SchemaVersion { get; set; } = 1;
+        public string ProviderId { get; set; }
+        public string ProviderVersion { get; set; }
+        public string TypeName { get; set; }
+        public string Kind { get; set; } = "Activity";
+        public string EventType { get; set; }
+        public string ControlName { get; set; }
+        public long Revision { get; set; }
+        public string DeadlineUtc { get; set; }
+        public List<ExtensionNamedValue> Parameters { get; set; } = new List<ExtensionNamedValue>();
+    }
+    public sealed class ExtensionDesignerResult
+    {
+        public int SchemaVersion { get; set; } = 1;
+        public long Revision { get; set; }
+        public List<ExtensionDesignerFieldUpdate> Fields { get; set; } = new List<ExtensionDesignerFieldUpdate>();
+    }
+    public sealed class ExtensionDesignerFieldUpdate
+    {
+        public string Name { get; set; }
+        // Null leaves a value/UI property unchanged; an empty value clears it.
+        public string Value { get; set; }
+        public bool? IsVisible { get; set; }
+        public bool? IsEnabled { get; set; }
+        public List<string> Options { get; set; }
+        public string ValidationMessage { get; set; }
     }
 
     [DataContract]
