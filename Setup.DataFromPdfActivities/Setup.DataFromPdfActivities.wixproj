@@ -66,11 +66,13 @@
 
   <ItemGroup>
     <PackageReference Include="WixToolset.UI.wixext" Version="5.*" />
+    <PackageReference Include="WixToolset.Netfx.wixext" Version="5.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Wix Include="**\*.wxs" />
     <None Include="ProductVariables.wxi" />
+    <None Include="..\InstallerTools\RequireNetFramework48.wxi" Link="RequireNetFramework48.wxi" />
     <None Include="..\InstallerTools\GenerateInstallerVersion.ps1" Link="GenerateInstallerVersion.ps1" />
   </ItemGroup>
 </Project>

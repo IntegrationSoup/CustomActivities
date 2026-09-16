@@ -1,0 +1,8 @@
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- WiX detects the minimum release using native code, even when .NET is absent. -->
+  <PropertyRef Id="WIX_IS_NETFRAMEWORK_48_OR_LATER_INSTALLED" />
+
+  <!-- Keep maintenance and uninstall available if the runtime has been removed. -->
+  <Launch Condition="Installed OR (WIX_IS_NETFRAMEWORK_48_OR_LATER_INSTALLED = 1)"
+          Message="This Extension Library requires Microsoft .NET Framework 4.8 or later. Install the .NET Framework 4.8 Runtime, restart Windows if requested, and run this installer again. Download: https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48" />
+</Include>

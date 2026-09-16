@@ -27,6 +27,8 @@ This repository contains Integration Soup extension libraries, their out-of-proc
   - `C:\Users\jason\source\repos\Documentation`
 
 ## Packaging Rules
+- The HTML to PDF, RTF to PDF, Data from PDF, Azure, AWS, Encryption, SFTP, and ZIP installers require .NET Framework 4.8 or later. They share `InstallerTools/RequireNetFramework48.wxi` and the WiX Netfx extension's native prerequisite detection.
+- New installations and upgrades stop with a .NET Framework 4.8 Runtime download message when the prerequisite is missing. Maintenance and uninstall remain available. .NET Framework 4.8.1 satisfies the check but is not required.
 - Do not ship `HL7SoupIntegrations.dll` in extension installers.
 - Install the activity DLL to all three product `Custom Libraries` folders.
 - Install runner payload folders only to the Integration Host Server `Custom Libraries` folder.

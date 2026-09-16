@@ -24,6 +24,8 @@
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
+    <?include $(var.ProjectDir)..\InstallerTools\RequireNetFramework48.wxi ?>
+
     <Property Id="INTEGRATIONSOUPSERVICEFOUND">
       <RegistrySearch Id="FindIntegrationSoupHostService"
                       Root="HKLM"
