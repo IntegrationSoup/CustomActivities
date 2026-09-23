@@ -48,7 +48,6 @@ namespace Popokey.Installer
             if (providerRunning && !ServicePolicy.ServiceNames.Any(name =>
                 data[name + "Kind"] == HostKind.V4.ToString() && data[name + "State"] == HostState.Running.ToString()))
                 throw new InvalidOperationException("An extension runner is active outside a running confirmed V4 service. Close its owning host before retrying; no runner was terminated.");
-            GuardCachedServiceControls(session["WIX_UPGRADE_DETECTED"], data);
             // Overwrite, rather than trusting command-line properties supplied by a caller.
             foreach (string action in new[] { "StopLegacyHostServices", "RestoreLegacyHostServices", "RollbackLegacyHostServices", "RollbackStopLegacyHostServices" })
                 session[action] = data.ToString();
@@ -145,34 +144,6 @@ namespace Popokey.Installer
                 if (!string.IsNullOrWhiteSpace(path)) result.Add(Tuple.Create(path, product.ProductVersion));
             }
             return result;
-        }
-
-        private static void GuardCachedServiceControls(string relatedProducts, CustomActionData data)
-        {
-            foreach (string productCode in relatedProducts.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                // Open only the cached database read-only, never an installation session.
-                // Its native controls remain effective during old-product rollback.
-                string cache = new ProductInstallation(productCode).LocalPackage;
-                using (var database = new Database(cache, DatabaseOpenMode.ReadOnly))
-                {
-                    if (!database.Tables.Contains("ServiceControl")) continue;
-                    using (View view = database.OpenView("SELECT `Name`, `Event` FROM `ServiceControl`"))
-                    {
-                        view.Execute();
-                        Record row;
-                        while ((row = view.Fetch()) != null)
-                        using (row)
-                        {
-                            if (row.GetInteger(2) == 0) continue;
-                            string name = row.GetString(1);
-                            if (!ServicePolicy.ServiceNames.Contains(name) ||
-                                !ServicePolicy.CachedControlsAllowed(Parse<HostKind>(data[name + "Kind"]), Parse<HostState>(data[name + "State"])))
-                                throw new InvalidOperationException("The cached previous activity installer contains service controls that cannot preserve this host's initial state on rollback. This upgrade is blocked before removal. Use a separately validated legacy-package transition; no service was stopped or started.");
-                        }
-                    }
-                }
-            }
         }
 
         private static bool ProviderRunning(string runner)

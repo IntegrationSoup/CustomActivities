@@ -56,6 +56,5 @@ namespace Popokey.Installer
         }
 
         internal static bool NeedsRestore(HostKind host, HostState before) => host == HostKind.V4 && before == HostState.Running;
-        internal static bool CachedControlsAllowed(HostKind host, HostState before) => before == HostState.Absent || NeedsRestore(host, before);
     }
 }

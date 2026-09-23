@@ -1,4 +1,4 @@
-# Host service policy (activity MSI 5.0.6)
+# Host service policy (activity MSI 5.0.7)
 
 The shared policy replaces unconditional native ServiceControl rows in all ten
 activity installers. Activity MSI version 5.x does not identify the installed host.
@@ -38,26 +38,29 @@ inside the transaction (ICE63). Live execution of these paths remains a release 
 ## Cached legacy installer transition
 
 Removing native ServiceControl rows from the new MSI cannot disable an old cached
-MSI's controls. The immediate guard reads each related cached MSI database without
-opening an installation session. If native controls affect an existing service,
-the transition is allowed only for an initially running confirmed V4 service.
-An initially stopped service therefore blocks upgrades from these older packages.
-This is a conservative guard against an UNVERIFIED rollback risk, not a demonstrated
-Windows Installer defect. The old Event35 requests uninstall Stop, not uninstall
-Start. Microsoft's general rollback contract restores original state, but the
-specific service-state behavior has not been tested here. Resolve this gate before
-accepting the blanket restriction for production. Unreadable caches or unexpected service
-names fail closed. Policy-aware packages without native controls can upgrade with
-the service stopped. Do not bypass this guard by assuming a stopped legacy upgrade
-is safe; a separately validated transition procedure is required. Direct use of an
-old cached MSI still follows that old package's behavior.
+MSI's controls. Released 5.0.4/5.0.5 use Event35: uninstall Stop, not uninstall
+Start. Stopped V4, V5 and unknown hosts may therefore upgrade without an active
+target runner; the new custom actions never start an initially stopped service.
+Native rollback relies on Windows Installer's documented original-state contract.
+Actual failure/rollback execution remains an acceptance test, not a reason to
+invent a blanket veto. The speculative cached-control restriction in the signed
+5.0.6 review artifacts was removed in 5.0.7. Those artifacts remain superseded.
+Running V5 destructive maintenance still requires the operator to close the host;
+the MSI does not terminate it or replay/kill its active runners. Direct use of an
+old cached MSI still follows that package's own behavior.
+
+`RequireInstallerRollback` is an immediate error action before capture and old
+removal. It rejects `RollbackDisabled` or `DISABLEROLLBACK = 1`, as required for
+custom actions depending on rollback/commit. No service or payload modification
+is attempted by this guard. See Microsoft's
+[rollback guidance](https://learn.microsoft.com/en-us/windows/win32/msi/rollback-custom-actions).
 
 ## Validation and release gates
 
-`HostServiceActions.Tests` links the production decision logic: 56 checks cover
-identity, state preservation, unknown/V5 behavior and cached-control transitions.
+`HostServiceActions.Tests` links the production decision logic: 53 checks cover
+identity, state preservation, unknown/V5 behavior and allowed stopped legacy upgrades.
 `Test-HostServicePolicy.ps1` checks actual MSI tables for all ten packages, action
-types/conditions, binary linkage, no native controls and upgrade/rollback ordering.
+types/conditions, the rollback-enabled guard, binary linkage, no native controls and upgrade/rollback ordering.
 Bridge packaging and .NET prerequisite checks run separately. Signed packaging
 compares every extracted installed file with Release outputs and verifies the MSI,
 owned binaries and embedded helpers with the expected publisher and timestamp.

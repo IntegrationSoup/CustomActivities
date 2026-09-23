@@ -37,12 +37,12 @@ internal static class Program
         Check(!ServicePolicy.NeedsRestore(HostKind.Unknown, HostState.Running), "No automatic unknown-host restart on success/rollback");
         foreach (HostKind kind in Enum.GetValues(typeof(HostKind)))
         {
-            Check(!ServicePolicy.CachedControlsAllowed(kind, HostState.Stopped), "Cached native rollback must not start an initially stopped service");
-            Check(ServicePolicy.CachedControlsAllowed(kind, HostState.Absent), "Cached service control cannot create an absent service");
+            // Legacy 5.0.4/5.0.5 removal requests Stop, not Start. The production
+            // path has no separate veto based on the old MSI's native controls.
+            Check(ServicePolicy.Decide(kind, HostState.Stopped, true, false) == ServiceDecision.LeaveAlone,
+                "Legacy upgrade of stopped V4/V5/unknown host is allowed without an active provider");
+            Check(!ServicePolicy.NeedsRestore(kind, HostState.Stopped), "Legacy upgrade does not schedule a custom service start");
         }
-        Check(ServicePolicy.CachedControlsAllowed(HostKind.V4, HostState.Running), "Cached V4 controls only restore the initially running V4 host");
-        Check(!ServicePolicy.CachedControlsAllowed(HostKind.V5, HostState.Running), "Cached controls cannot restart V5");
-        Check(!ServicePolicy.CachedControlsAllowed(HostKind.Unknown, HostState.Running), "Cached controls cannot restart an unknown host");
         Console.WriteLine(checks + " service policy and installed-host identity checks passed; no Windows service operations executed.");
     }
     private static IEnumerable<Tuple<string, Version>> Product(string path, string version) => new[] { Tuple.Create(path, new Version(version)) };

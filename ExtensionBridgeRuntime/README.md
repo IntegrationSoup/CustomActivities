@@ -79,8 +79,9 @@ Every released payload change must advance the version/revision. Do not reuse a
 revision to overwrite a running generation. From activity MSI 5.0.6, only an
 initially running confirmed V4 host is automatically drained and restarted. V5
 destructive maintenance requires the host to be closed; new-provider discovery
-does not restart it. Unknown hosts never default to V4. Cached legacy package
-controls require an additional transition guard. See
+does not restart it. Unknown hosts never default to V4. Corrected 5.0.7 installers
+allow stopped legacy V4/V5/unknown host upgrades without active target runners;
+the speculative legacy-control veto in the 5.0.6 review set is removed. See
 [host service policy](../InstallerTools/HostServiceActions/README.md) for state
 preservation, rollback and acceptance gates. Seamless hot replacement is not promised.
 

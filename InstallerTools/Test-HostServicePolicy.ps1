@@ -22,6 +22,7 @@ foreach ($file in Get-ChildItem -LiteralPath $ArtifactDirectory -Filter 'Integra
     $sequence=@{}; $conditions=@{}
     foreach($row in Rows $db InstallExecuteSequence @('Action','Condition','Sequence')) { $sequence[$row.Action]=[int]$row.Sequence; $conditions[$row.Action]=$row.Condition }
     Assert ($sequence.CaptureHostServices -lt $sequence.InstallInitialize) 'Safety guard must precede transaction/old removal'
+    Assert ($sequence.RequireInstallerRollback -lt $sequence.CaptureHostServices -and $conditions.RequireInstallerRollback -eq 'RollbackDisabled OR DISABLEROLLBACK = 1') 'Require rollback before capture and old removal'
     Assert ($sequence.RemoveExistingProducts -gt $sequence.InstallInitialize) 'Keep early removal in transaction'
     Assert ($sequence.RollbackLegacyHostServices -gt $sequence.RemoveExistingProducts) 'Do not generate rollback script before early removal (ICE63)'
     Assert ($sequence.StopLegacyHostServices -gt $sequence.RollbackLegacyHostServices -and $sequence.StopLegacyHostServices -lt $sequence.RemoveFiles) 'Drain before own file removal'
@@ -31,6 +32,7 @@ foreach ($file in Get-ChildItem -LiteralPath $ArtifactDirectory -Filter 'Integra
     Assert ($conditions.RestoreLegacyHostServices -eq 'NOT UPGRADINGPRODUCTCODE') 'Nested old-package removal must not prematurely restart service'
     Assert ([string]::IsNullOrEmpty($conditions.CaptureHostServices) -and [string]::IsNullOrEmpty($conditions.StopLegacyHostServices)) 'New-policy old uninstall must capture and drain'
     $actions=@{}; foreach($row in Rows $db CustomAction @('Action','Type','Source','Target')) { $actions[$row.Action]=$row }
+    Assert ([int]$actions.RequireInstallerRollback.Type -eq 19 -and $actions.RequireInstallerRollback.Target -match 'rollback must be enabled') 'Rollback requirement must be an immediate error action'
     foreach($name in @('CaptureHostServices','StopLegacyHostServices','RestoreLegacyHostServices','RollbackLegacyHostServices','RollbackStopLegacyHostServices')) {
         Assert ($actions[$name].Source -eq 'HostServicePolicy' -and $actions[$name].Target -eq $name) 'Managed entrypoint wiring missing'
         $expected = if($name -eq 'CaptureHostServices'){1}elseif($name.StartsWith('Rollback')){3329}else{3073}

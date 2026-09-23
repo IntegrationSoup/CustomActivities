@@ -3,6 +3,7 @@
     <Property Id="HostServiceProviderId" Value="$(var.HostServiceProviderId)" />
     <Property Id="HostServiceRunnerName" Value="$(var.HostServiceRunnerName)" />
     <Binary Id="HostServicePolicy" SourceFile="$(var.HostServiceActionPath)" />
+    <CustomAction Id="RequireInstallerRollback" Error="Windows Installer rollback must be enabled to install or maintain this activity package. Enable rollback and retry." />
     <CustomAction Id="CaptureHostServices" BinaryRef="HostServicePolicy" DllEntry="CaptureHostServices" Execute="immediate" Return="check" />
     <CustomAction Id="RollbackLegacyHostServices" BinaryRef="HostServicePolicy" DllEntry="RollbackLegacyHostServices" Execute="rollback" Impersonate="no" Return="check" />
     <CustomAction Id="StopLegacyHostServices" BinaryRef="HostServicePolicy" DllEntry="StopLegacyHostServices" Execute="deferred" Impersonate="no" Return="check" />
@@ -14,6 +15,7 @@
            (ICE63). The old uninstall drains its service before removing its files.
            Its own rollback restores its original state after restoring OLD files.
            A nested new-policy uninstall must drain, but must not restart on success. -->
+      <Custom Action="RequireInstallerRollback" Before="CaptureHostServices" Condition="RollbackDisabled OR DISABLEROLLBACK = 1" />
       <Custom Action="CaptureHostServices" Before="InstallInitialize" />
       <Custom Action="RollbackLegacyHostServices" After="RemoveExistingProducts" Condition="NOT WIX_UPGRADE_DETECTED" />
       <Custom Action="StopLegacyHostServices" After="RollbackLegacyHostServices" />
