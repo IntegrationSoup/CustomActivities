@@ -14,13 +14,13 @@ function Rows($db, [string]$table, [string[]]$columns) {
     $query = 'SELECT ' + (($columns | ForEach-Object { '`'+$_+'`' }) -join ',') + ' FROM `'+$table+'`'
     $view = $db.OpenView($query)
     try {
-        $view.Execute()
+        $view.Execute() | Out-Null
         while ($record = $view.Fetch()) {
             $row = [ordered]@{}
             for ($i=0; $i -lt $columns.Count; $i++) { $row[$columns[$i]] = $record.StringData($i+1) }
             [pscustomobject]$row
         }
-    } finally { $view.Close() }
+    } finally { $view.Close() | Out-Null }
 }
 function Signature([string]$path) {
     $sig = Get-AuthenticodeSignature -LiteralPath $path
@@ -48,15 +48,32 @@ $oldProps = @{}; foreach ($row in (Rows $old Property @('Property','Value'))) { 
 if ($props.ProductVersion -ne $ExpectedVersion -or [version]$props.ProductVersion -le [version]$oldProps.ProductVersion -or
     $props.UpgradeCode -ne $oldProps.UpgradeCode -or $props.ProductName -ne $oldProps.ProductName) { throw 'Package identity/version mismatch' }
 if (Compare-Object (Inventory $old) (Inventory $db)) { throw 'Original file identities/destinations changed' }
+$oldDirectories = @(Rows $old Directory @('Directory','Directory_Parent','DefaultDir'))
+foreach ($directory in $oldDirectories | Where-Object Directory -eq 'BridgeRevisionDirectory') {
+    $directory.DefaultDir = $directory.DefaultDir.Replace($oldProps.ProductVersion,$ExpectedVersion)
+}
+$newDirectories = @(Rows $db Directory @('Directory','Directory_Parent','DefaultDir'))
+# WiX derives new 8.3 aliases when the revision changes; compare installed long names.
+foreach ($directory in @($oldDirectories) + @($newDirectories)) {
+    $directory.DefaultDir = ($directory.DefaultDir -split '\|')[-1]
+}
+if (($oldDirectories | ConvertTo-Json -Compress) -ne ($newDirectories | ConvertTo-Json -Compress)) { throw 'Installed directory hierarchy changed' }
 foreach ($table in @(@('Registry','Registry','Root','Key','Name','Value','Component_'), @('CustomAction','Action','Type','Source','Target'), @('ServiceControl','ServiceControl','Name','Event','Arguments','Wait','Component_'))) {
-    $oldRows = @(Rows $old $table[0] $table[1..($table.Length-1)] | ConvertTo-Json -Depth 5 -Compress)
+    $oldData = @(Rows $old $table[0] $table[1..($table.Length-1)])
+    if ($table[0] -eq 'CustomAction') {
+        foreach ($row in $oldData | Where-Object Action -in @('RollbackBridgeManifest','WriteBridgeManifest','CommitBridgeManifest')) {
+            $row.Target = $row.Target -replace ('"'+[regex]::Escape($oldProps.ProductVersion)+'"$'), ('"'+$ExpectedVersion+'"')
+        }
+    }
+    $oldRows = @($oldData | ConvertTo-Json -Depth 5 -Compress)
     $newRows = @(Rows $db $table[0] $table[1..($table.Length-1)] | ConvertTo-Json -Depth 5 -Compress)
     if (Compare-Object $oldRows $newRows) { throw "Existing $($table[0]) definitions changed" }
 }
 $files = @(Rows $db File @('File','FileName','Version'))
 if ($files.FileName -match 'HL7SoupIntegrations\.dll') { throw 'Host API must not be packaged' }
 $wix = Join-Path $env:USERPROFILE '.nuget/packages/wixtoolset.sdk/5.0.2/tools/net472/x64/wix.exe'
-& $wix msi decompile $MsiPath -x $OutputDirectory -o (Join-Path $OutputDirectory 'package.wxs') *> (Join-Path $OutputDirectory 'extraction.log')
+# WiX recreates its extraction directory, so keep the open log outside it.
+& $wix msi decompile $MsiPath -x $OutputDirectory -o (Join-Path $OutputDirectory 'package.wxs') *> ($OutputDirectory + '-extraction.log')
 if ($LASTEXITCODE -ne 0) { throw 'Cabinet extraction failed' }
 $candidates = @(
     Get-ChildItem -LiteralPath (Join-Path $SourceRoot 'DataFromPdfActivities/bin/Release/net48') -File

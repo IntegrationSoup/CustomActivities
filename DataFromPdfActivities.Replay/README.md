@@ -76,5 +76,9 @@ PDFs. No PDFs were used. The pre-existing `sample2` clinicalIndication continuat
 truncation remains unchanged and needs separate investigation.
 
 Reviewable website and Documentation repository patches are staged alongside this
-README to keep all changes isolated in this worktree. No deployment, installation,
-workflow execution, mapping update, commit, or push is part of this repair.
+README to keep documentation edits reviewable. The approved repair was subsequently
+consolidated with the released bridge branch and committed on
+`codex/pdf-anchored-recovery`. The signed Data from PDF 5.0.5 MSI was verified and
+copied to local website downloads staging with a backup of 5.0.4. See
+`Setup.DataFromPdfActivities/RELEASE-5.0.5.md` for build and verification details.
+No installation, workflow execution, mapping change, public upload, or Git push occurred.
