@@ -26,8 +26,6 @@
 
     <?include $(var.ProjectDir)..\InstallerTools\RequireNetFramework48.wxi ?>
 
-    <?include $(var.ProjectDir)..\InstallerTools\RequireNetFramework48.wxi ?>
-
     <Property Id="INTEGRATIONSOUPSERVICEFOUND">
       <RegistrySearch Id="FindIntegrationSoupHostService"
                       Root="HKLM"
