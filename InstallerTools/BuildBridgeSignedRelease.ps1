@@ -1,17 +1,18 @@
 param(
     [string]$InstallerVersion = '5.0.2',
     [string]$SigntoolPath = 'C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe',
-    [string[]]$AlreadyBuilt = @()
+    [string[]]$AlreadyBuilt = @(),
+    [string]$ResumeArtifactRoot
 )
 $ErrorActionPreference = 'Stop'
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$artifactRoot = Join-Path $repository ("artifacts/bridge-signed/$InstallerVersion-"+[guid]::NewGuid().ToString('N'))
-if (Test-Path -LiteralPath $artifactRoot) { throw 'Use a new release directory; do not overwrite release evidence.' }
+$artifactRoot = if ($ResumeArtifactRoot) { [IO.Path]::GetFullPath($ResumeArtifactRoot) } else { Join-Path $repository ("artifacts/bridge-signed/$InstallerVersion-"+[guid]::NewGuid().ToString('N')) }
+if (!$ResumeArtifactRoot -and (Test-Path -LiteralPath $artifactRoot)) { throw 'Use a new release directory; do not overwrite release evidence.' }
 $thumbprint = '1586FB787BD45270D870F90918EF887A121EB6DB'
 $wix = Join-Path $env:USERPROFILE '.nuget/packages/wixtoolset.sdk/5.0.2/tools/net6.0/wix.dll'
 $setups = @('ZipActivities','DataFromPdfActivities','HtmlToPdfActivities','RtfToPdfActivities','AzureActivities','AwsActivities','EncryptionActivities','SftpActivities','HL7ValueTransformers','ValidateHl7Transformer')
 if (@($AlreadyBuilt | Where-Object { $_ -notin $setups }).Count) { throw 'Unknown already-built package.' }
-New-Item -ItemType Directory -Path $artifactRoot | Out-Null
+if (!$ResumeArtifactRoot) { New-Item -ItemType Directory -Path $artifactRoot | Out-Null }
 $sourceCommit = (& git -C $repository rev-parse HEAD).Trim()
 $msi = New-Object -ComObject WindowsInstaller.Installer
 function Rows($database, [string]$table, [string[]]$columns) {
@@ -30,8 +31,14 @@ function Signature([string]$path) {
     }
     [pscustomobject]@{Path=$path;SHA256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash;Status=$signature.Status.ToString();Publisher=$signature.SignerCertificate.Subject;SignerThumbprint=$signature.SignerCertificate.Thumbprint;TimestampAuthority=$signature.TimeStamperCertificate.Subject;TimestampThumbprint=$signature.TimeStamperCertificate.Thumbprint}
 }
-$results = @()
+$results = if ($ResumeArtifactRoot) { @(Get-Content -LiteralPath (Join-Path $artifactRoot 'signed-release-verification.json') -Raw | ConvertFrom-Json) } else { @() }
 foreach ($setup in $setups) {
+    $previous = @($results | Where-Object Name -eq "IntegrationSoup.$setup.msi")
+    if ($previous.Count) {
+        if ($previous.Count -ne 1 -or $previous[0].ProductVersion -ne $InstallerVersion -or (Signature $previous[0].MSI.Path).SHA256 -ne $previous[0].MSI.SHA256) { throw 'Previously verified release evidence changed.' }
+        Write-Output "RETAINED verified $setup; not rebuilt or re-signed."
+        continue
+    }
     $project = Join-Path $repository "Setup.$setup/Setup.$setup.wixproj"
     if ($setup -notin $AlreadyBuilt) {
         & dotnet build $project -c Release --no-restore --nologo -m:1 "-p:InstallerVersion=$InstallerVersion" "-p:SigntoolPath=$SigntoolPath" '-p:SkipCodeSigning=false' '-p:SkipTimestamp=false'
@@ -55,7 +62,7 @@ foreach ($setup in $setups) {
     $runnerName = [string]$projectXml.SelectSingleNode('//BridgeExecutableName').InnerText
     $ownedNames = @($legacyName,$runnerName,([IO.Path]::GetFileNameWithoutExtension($runnerName)+'.dll'))
     $inspection = Join-Path $artifactRoot "inspection/$setup"
-    New-Item -ItemType Directory -Path $inspection | Out-Null
+    New-Item -ItemType Directory -Path $inspection -Force | Out-Null
     & dotnet $wix msi decompile $installer -x $inspection -o (Join-Path $inspection 'package.wxs') *> (Join-Path $artifactRoot "$setup-extraction.log")
     if ($LASTEXITCODE -ne 0) { throw "Read-only MSI extraction failed: $setup" }
     $payloadSignatures = @()
@@ -78,6 +85,7 @@ foreach ($setup in $setups) {
     $buildFiles = @(
         Get-ChildItem -Path "$repository/*/bin/Release", "$repository/*/*/bin/Release" -Directory -ErrorAction SilentlyContinue | Get-ChildItem -Recurse -File
         Get-ChildItem -LiteralPath (Join-Path $repository "Setup.$setup/obj/Release/bridge") -File
+        Get-ChildItem -LiteralPath (Join-Path $repository "Setup.$setup") -File
     )
     $fileProof = @()
     foreach ($file in $files) {

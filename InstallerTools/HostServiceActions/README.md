@@ -41,8 +41,12 @@ Removing native ServiceControl rows from the new MSI cannot disable an old cache
 MSI's controls. The immediate guard reads each related cached MSI database without
 opening an installation session. If native controls affect an existing service,
 the transition is allowed only for an initially running confirmed V4 service.
-An initially stopped service therefore blocks upgrades from these older packages:
-their rollback could otherwise start it. Unreadable caches or unexpected service
+An initially stopped service therefore blocks upgrades from these older packages.
+This is a conservative guard against an UNVERIFIED rollback risk, not a demonstrated
+Windows Installer defect. The old Event35 requests uninstall Stop, not uninstall
+Start. Microsoft's general rollback contract restores original state, but the
+specific service-state behavior has not been tested here. Resolve this gate before
+accepting the blanket restriction for production. Unreadable caches or unexpected service
 names fail closed. Policy-aware packages without native controls can upgrade with
 the service stopped. Do not bypass this guard by assuming a stopped legacy upgrade
 is safe; a separately validated transition procedure is required. Direct use of an
@@ -63,6 +67,6 @@ Windows V4/V5 matrix must test fresh install, upgrade from shipped legacy packag
 policy-aware upgrade, repair, uninstall and injected rollback failures before/after
 file replacement and service restoration. Include running/stopped/absent and unknown
 hosts, pending state, standard-user detection, interactive/leased runners, silent/UI
-invocation and cached-package failures. Confirm original state and original files on
+invocation, disabled rollback policy and cached-package failures. Confirm original state and original files on
 rollback. No live MSI install, service changes, staging or publication is performed
 by the build/verification scripts.
