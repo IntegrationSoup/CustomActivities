@@ -31,7 +31,8 @@ function Signature([string]$path) {
     }
     [pscustomobject]@{Path=$path;SHA256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash;Status=$signature.Status.ToString();Publisher=$signature.SignerCertificate.Subject;SignerThumbprint=$signature.SignerCertificate.Thumbprint;TimestampAuthority=$signature.TimeStamperCertificate.Subject;TimestampThumbprint=$signature.TimeStamperCertificate.Thumbprint}
 }
-$results = if ($ResumeArtifactRoot) { @(Get-Content -LiteralPath (Join-Path $artifactRoot 'signed-release-verification.json') -Raw | ConvertFrom-Json) } else { @() }
+$results = @()
+if ($ResumeArtifactRoot) { $results = @(Get-Content -LiteralPath (Join-Path $artifactRoot 'signed-release-verification.json') -Raw | ConvertFrom-Json) }
 foreach ($setup in $setups) {
     $previous = @($results | Where-Object Name -eq "IntegrationSoup.$setup.msi")
     if ($previous.Count) {
