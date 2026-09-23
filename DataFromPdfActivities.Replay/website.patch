@@ -1,0 +1,23 @@
+diff --git a/ExtensionLibraries/DataFromPdfActivities.html b/ExtensionLibraries/DataFromPdfActivities.html
+index ee58b45..45e60bf 100644
+--- a/ExtensionLibraries/DataFromPdfActivities.html
++++ b/ExtensionLibraries/DataFromPdfActivities.html
+@@ -72,7 +72,17 @@
+ </p>
+ <h3>What The Activity Returns</h3>
+ <p>The JSON response includes document details, detected label-value fields, full text, per-page text, and line information that can help when checking the result. The detected fields are best-effort and come from visible text patterns such as <code>Invoice Number: 12345</code>.</p>
+-<p>If text appears after a blank label but does not have its own label, the activity keeps it under generic names such as <code>unlabeledAfterAcc</code>, <code>unlabeledAfterAccLine1</code>, and <code>unlabeledBlock1Line1</code>. The same pattern is used for other labels. These names describe where the text was found, not what the text means.</p>
++<p>If text appears after a blank label but does not have its own label, the activity keeps it under generic names such as <code>unlabeledAfterAcc</code>, <code>unlabeledAfterAccLine1</code>, and <code>unlabeledBlock1Line1</code>. The same pattern is used for other labels. These names describe where the text was found, not what the text means.</p>
++<p>For a nearby unlabelled block in a separate left column, the activity can also add
++<code>unlabeledAfterVisitNo</code>, <code>unlabeledAfterVisitNoPage</code>, and
++<code>unlabeledAfterVisitNoLine1</code> (with further numbered lines). This includes
++some layouts with populated labels or unlabelled text beside a label on the same row.
++Existing fields remain unchanged. Recovery is best-effort; review the returned lines
++and map the anchored keys appropriate to each layout. The preceding labelled row
++determines the name: for example, Visit No gives <code>unlabeledAfterVisitNoLine1</code>,
++while ACC gives <code>unlabeledAfterAccLine1</code>. If that field group is already
++occupied, a separate numbered block such as <code>unlabeledAfterAccBlock2Line1</code>
++keeps the new block distinct. Existing blank fields are also preserved.</p>
+ <h3>Requirements And Notes</h3>
+ <p><strong>Microsoft .NET Framework 4.8 or later is required.</strong> Setup stops with a prerequisite message if it is missing. Install the <a href="https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48">.NET Framework 4.8 Runtime</a>, restart Windows if requested, and run setup again. Version 4.8.1 also satisfies the requirement.</p>
+ <ul class="style1">

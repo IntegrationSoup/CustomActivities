@@ -1,0 +1,34 @@
+diff --git a/docs/integration-workflows/extension-libraries/version-5-deployment.md b/docs/integration-workflows/extension-libraries/version-5-deployment.md
+index b1b45d3..79375be 100644
+--- a/docs/integration-workflows/extension-libraries/version-5-deployment.md
++++ b/docs/integration-workflows/extension-libraries/version-5-deployment.md
+@@ -54,4 +54,27 @@ response samples are read-only unless the library explicitly permits editing.
+ 
+ Extensions advertise these capabilities; they are not required to configure or
+ run the activity. Version 4 retains its manual fields and runtime behavior without
+-interactive assistance. Callback failures leave manual entry available.
+\ No newline at end of file
++interactive assistance. Callback failures leave manual entry available.
++
++## Data from PDF: additive column recovery
++
++After legacy extraction, the runner can retain a nearby unlabelled left-column block
++under `data.fields.unlabeledAfterVisitNo`, `unlabeledAfterVisitNoPage`, and
++`unlabeledAfterVisitNoLine1` (and subsequent numbered lines). Populated right-side
++labels and mixed rows are supported when retained line text and positions provide
++sufficient evidence. Existing keys and values, including legacy `unlabeledAfter...`
++blocks, are preserved. These keys describe layout, not the semantic identity of a
++person or address; downstream mappings must be reviewed for each layout.
++The actual preceding label determines the key: Visit No gives `unlabeledAfterVisitNo`,
++and ACC gives `unlabeledAfterAcc`, including when the ACC field is populated.
++An occupied field family (even a blank or partial one) is preserved as a whole;
++a distinct new block uses `unlabeledAfterAccBlock2` and its own Page/Line keys,
++incrementing the block suffix until free. Repeated recovery does not duplicate blocks.
++
++The recovery uses line text/x/y and existing fields. It requires at least two aligned
++rows close below a labelled row in the right column. Unknown labels, large gaps, and
++alignment changes stop the pass. It cannot resolve all column ambiguities in flattened
++line text. The JSON replay harness in `DataFromPdfActivities.Replay` exercises the exact
++recovery source without original PDFs. Such replays do not verify PDF ingestion,
++word grouping, segment splitting, or legacy extraction. Clinical continuation limits
++are unchanged. The runner architecture, installers, and dependencies are unchanged.

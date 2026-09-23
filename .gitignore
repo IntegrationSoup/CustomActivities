@@ -13,3 +13,9 @@
 TestResults/
 *.nupkg
 *.snupkg
+
+# Private JSON replay outputs (may contain residual personal data)
+artifacts/pdf-replay-private/
+
+# Isolated signed package builds, reference binaries, and private replay evidence
+artifacts/pdf-installer/

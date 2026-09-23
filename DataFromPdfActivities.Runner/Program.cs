@@ -203,6 +203,14 @@ namespace DataFromPdfActivities.Runner
                 AddAnchoredUnlabeledBlocks(fields, page, ref unlabeledBlockIndex);
             }
 
+            // Run after all legacy extraction so no existing key or value is changed.
+            foreach (PageExtraction page in pages)
+            {
+                UnlabeledColumnRecovery.AddMissingBlocks(fields, page.Number,
+                    page.Lines.Select(line => new UnlabeledColumnRecovery.Line(
+                        line.Text, line.Left, line.Top)).ToList());
+            }
+
             return fields;
         }
 
