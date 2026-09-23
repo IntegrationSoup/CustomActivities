@@ -70,11 +70,31 @@ foreach ($setup in $setups) {
     $writer = Join-Path $inspection 'BridgeManifestWriter.exe'
     Copy-Item -LiteralPath (Join-Path $inspection 'Binary/BridgeWriter') -Destination $writer
     $payloadSignatures += Signature $writer
+    $servicePolicy = Join-Path $inspection 'HostServiceActions.CA.dll'
+    Copy-Item -LiteralPath (Join-Path $inspection 'Binary/HostServicePolicy') -Destination $servicePolicy
+    $payloadSignatures += Signature $servicePolicy
+    # Compare every installed file, not only the signed first-party binaries, with
+    # this checkout's just-built Release payloads and generated manifest template.
+    $buildFiles = @(
+        Get-ChildItem -Path "$repository/*/bin/Release", "$repository/*/*/bin/Release" -Directory -ErrorAction SilentlyContinue | Get-ChildItem -Recurse -File
+        Get-ChildItem -LiteralPath (Join-Path $repository "Setup.$setup/obj/Release/bridge") -File
+    )
+    $fileProof = @()
+    foreach ($file in $files) {
+        $longName = ($file.FileName -split '\|')[-1]
+        $hash = (Get-FileHash -LiteralPath (Join-Path $inspection ('File/'+$file.File))).Hash
+        $match = @($buildFiles | Where-Object { $_.Name -eq $longName -and (Get-FileHash -LiteralPath $_.FullName).Hash -eq $hash })
+        if (!$match.Count) { throw "Embedded file does not match build: $setup/$longName" }
+        $fileProof += [pscustomobject]@{File=$file.File;Name=$longName;SHA256=$hash;BuildPath=$match[0].FullName}
+    }
+    foreach ($item in @(@{Extracted=$writer;Built=(Join-Path $repository 'InstallerTools/BridgeManifestWriter/bin/Release/net48/BridgeManifestWriter.exe')},@{Extracted=$servicePolicy;Built=(Join-Path $repository 'InstallerTools/HostServiceActions/bin/Release/net48/HostServiceActions.CA.dll')})) {
+        if ((Get-FileHash -LiteralPath $item.Extracted).Hash -ne (Get-FileHash -LiteralPath $item.Built).Hash) { throw 'Embedded installer helper differs from build.' }
+    }
     if (!$legacyName -or !($files | Where-Object File -eq 'BridgeExecutableFile') -or $payloadSignatures.Count -lt 3) { throw 'Expected owned payloads missing.' }
     $verifyPaths = @($installer)+@($payloadSignatures.Path)
     & $SigntoolPath verify /pa /all /tw @verifyPaths *> (Join-Path $inspection 'trusted-signature-verification.log')
     if ($LASTEXITCODE -ne 0) { throw "Trusted Authenticode/timestamp verification failed: $setup" }
-    $results += [pscustomobject]@{Name=$name;ProductVersion=$properties.ProductVersion;ProductName=$properties.ProductName;UpgradeCode=$properties.UpgradeCode;ProductCode=$properties.ProductCode;SourceCommit=$sourceCommit;MSI=$installerSignature;Payloads=$payloadSignatures}
+    $results += [pscustomobject]@{Name=$name;ProductVersion=$properties.ProductVersion;ProductName=$properties.ProductName;UpgradeCode=$properties.UpgradeCode;ProductCode=$properties.ProductCode;SourceCommit=$sourceCommit;MSI=$installerSignature;Payloads=$payloadSignatures;Files=$fileProof}
     $results | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $artifactRoot 'signed-release-verification.json') -Encoding utf8
     Write-Output "VERIFIED ${name}: $InstallerVersion, Popokey signature and trusted timestamp, $($payloadSignatures.Count) embedded owned payload copies."
 }

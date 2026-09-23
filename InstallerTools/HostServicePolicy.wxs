@@ -1,0 +1,24 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <Property Id="HostServiceProviderId" Value="$(var.HostServiceProviderId)" />
+    <Property Id="HostServiceRunnerName" Value="$(var.HostServiceRunnerName)" />
+    <Binary Id="HostServicePolicy" SourceFile="$(var.HostServiceActionPath)" />
+    <CustomAction Id="CaptureHostServices" BinaryRef="HostServicePolicy" DllEntry="CaptureHostServices" Execute="immediate" Return="check" />
+    <CustomAction Id="RollbackLegacyHostServices" BinaryRef="HostServicePolicy" DllEntry="RollbackLegacyHostServices" Execute="rollback" Impersonate="no" Return="check" />
+    <CustomAction Id="StopLegacyHostServices" BinaryRef="HostServicePolicy" DllEntry="StopLegacyHostServices" Execute="deferred" Impersonate="no" Return="check" />
+    <CustomAction Id="RestoreLegacyHostServices" BinaryRef="HostServicePolicy" DllEntry="RestoreLegacyHostServices" Execute="deferred" Impersonate="no" Return="check" />
+    <CustomAction Id="RollbackStopLegacyHostServices" BinaryRef="HostServicePolicy" DllEntry="RollbackStopLegacyHostServices" Execute="rollback" Impersonate="no" Return="check" />
+    <InstallExecuteSequence>
+      <!-- Capture/guard before old-product removal. No script-generating action
+           may intervene between InstallInitialize and early RemoveExistingProducts
+           (ICE63). The old uninstall drains its service before removing its files.
+           Its own rollback restores its original state after restoring OLD files.
+           A nested new-policy uninstall must drain, but must not restart on success. -->
+      <Custom Action="CaptureHostServices" Before="InstallInitialize" />
+      <Custom Action="RollbackLegacyHostServices" After="RemoveExistingProducts" Condition="NOT WIX_UPGRADE_DETECTED" />
+      <Custom Action="StopLegacyHostServices" After="RollbackLegacyHostServices" />
+      <Custom Action="RollbackStopLegacyHostServices" Before="RestoreLegacyHostServices" Condition="NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="RestoreLegacyHostServices" Before="InstallFinalize" Condition="NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

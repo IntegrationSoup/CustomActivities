@@ -26,6 +26,8 @@
 
     <?include $(var.ProjectDir)..\InstallerTools\RequireNetFramework48.wxi ?>
 
+    <CustomActionRef Id="CaptureHostServices" />
+
     <Property Id="INTEGRATIONSOUPSERVICEFOUND">
       <RegistrySearch Id="FindIntegrationSoupHostService"
                       Root="HKLM"
@@ -108,11 +110,6 @@
                        Type="integer"
                        Value="1"
                        KeyPath="yes" />
-        <ServiceControl Id="RestartIntegrationSoupHostService"
-                        Name="IntegrationSoupHostService"
-                        Stop="both"
-                        Start="install"
-                        Wait="yes" />
       </Component>
 
       <Component Bitness="always32" Id="LegacyServerServiceRestartComponent"
@@ -124,11 +121,6 @@
                        Type="integer"
                        Value="1"
                        KeyPath="yes" />
-        <ServiceControl Id="RestartLegacyIntegrationSoupHostService"
-                        Name="HL7SoupIntegrationHostServer"
-                        Stop="both"
-                        Start="install"
-                        Wait="yes" />
       </Component>
     </DirectoryRef>
 

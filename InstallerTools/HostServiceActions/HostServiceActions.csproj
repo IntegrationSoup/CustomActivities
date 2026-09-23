@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net48</TargetFramework><LangVersion>latest</LangVersion><PlatformTarget>x64</PlatformTarget></PropertyGroup>
+  <PropertyGroup><SfxCADll>$(NuGetPackageRoot)wixtoolset.dtf.customaction/5.0.2/tools/x64/SfxCA.dll</SfxCADll></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Dtf.CustomAction" Version="5.0.2" />
+    <Reference Include="System.ServiceProcess" />
+    <Content Include="CustomAction.config" />
+  </ItemGroup>
+</Project>
