@@ -30,6 +30,9 @@ namespace Popokey.ExtensionRunners
 
         internal TResponse Invoke<TRequest, TResponse>(string runnerExecutablePath, string operation, TRequest request, int timeoutMilliseconds)
         {
+#if EXTENSION_BRIDGE_RUNNER
+            return PersistentRunnerJson.Deserialize<TResponse>(SourceAdapterDispatch.Invoke(operation, PersistentRunnerJson.Serialize(request)));
+#else
             if (string.IsNullOrWhiteSpace(runnerExecutablePath))
             {
                 throw new ArgumentException("A runner executable path is required.", nameof(runnerExecutablePath));
@@ -88,6 +91,7 @@ namespace Popokey.ExtensionRunners
             {
                 requestGate.Release();
             }
+#endif
         }
 
         private void EnsureRunnerStarted(string requestedExecutablePath)

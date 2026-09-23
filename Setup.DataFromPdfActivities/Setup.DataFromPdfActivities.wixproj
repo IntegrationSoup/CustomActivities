@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputName>IntegrationSoup.DataFromPdfActivities</OutputName>
     <IncludeSearchPaths>$(MSBuildProjectDirectory)</IncludeSearchPaths>
-    <InstallerPlatform>x86</InstallerPlatform>
+    <InstallerPlatform>x64</InstallerPlatform>
 
     <ActivitySourceDir>$(MSBuildProjectDirectory)\..\DataFromPdfActivities\bin\$(Configuration)\net48\</ActivitySourceDir>
     <RunnerSourceDir>$(ActivitySourceDir)DataFromPdfRunner\</RunnerSourceDir>
@@ -75,4 +75,11 @@
     <None Include="..\InstallerTools\RequireNetFramework48.wxi" Link="RequireNetFramework48.wxi" />
     <None Include="..\InstallerTools\GenerateInstallerVersion.ps1" Link="GenerateInstallerVersion.ps1" />
   </ItemGroup>
+  <PropertyGroup>
+    <BridgeRunnerProject>DataFromPdfActivities.Runner</BridgeRunnerProject>
+    <BridgeExecutableName>DataFromPdfRunner.exe</BridgeExecutableName>
+    <BridgeProviderId>popokey.datafrompdf</BridgeProviderId>
+    <BridgeTargetFramework>net48</BridgeTargetFramework>
+  </PropertyGroup>
+  <Import Project="../InstallerTools/BridgeInstaller.targets" />
 </Project>

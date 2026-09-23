@@ -20,7 +20,7 @@ namespace AmazonActivities.Runner
 
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.awsactivities", "AmazonActivities", HandleServerRequest, typeof(AmazonActivities.S3Sender)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;

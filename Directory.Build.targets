@@ -1,0 +1,14 @@
+<Project>
+  <!-- A separate worktree can use an explicitly supplied, prebuilt host API.
+       Normal adjacent-repository project references remain the default. -->
+  <ItemGroup Condition="'$(HL7SoupIntegrationsAssembly)' != '' and '$(BridgeAdapterSource)' == ''">
+    <ProjectReference Remove="@(ProjectReference->WithMetadataValue('Filename', 'HL7SoupIntegrations'))" />
+    <Reference Include="HL7SoupIntegrations">
+      <HintPath>$(HL7SoupIntegrationsAssembly)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(OutputType)' != 'Exe'">
+    <Compile Remove="@(Compile->WithMetadataValue('Filename', 'ExtensionBridgeContract'))" />
+  </ItemGroup>
+</Project>

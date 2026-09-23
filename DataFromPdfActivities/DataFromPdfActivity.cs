@@ -9,8 +9,12 @@ using System.Runtime.Serialization;
 namespace DataFromPdfActivities
 {
     [DisplayName("Data from PDF")]
+    [Description("Extracts form fields and text from a PDF and returns JSON.")]
     [InMessage("", TypeOfMessages.Binary)]
     [OutMessage("{}", TypeOfMessages.UserDefined, TypeOfMessages.JSON)]
+#if EXTENSION_BRIDGE_RUNNER
+    [EditableResponseTemplate]
+#endif
     public class DataFromPdfActivity : CustomActivity
     {
         private const string RunnerPathEnvironmentVariable = "DATAFROMPDF_RUNNER_PATH";

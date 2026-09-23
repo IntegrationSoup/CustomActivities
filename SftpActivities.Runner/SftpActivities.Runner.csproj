@@ -20,4 +20,6 @@
     </None>
   </ItemGroup>
 
+  <PropertyGroup><BridgeAdapterSource>$(MSBuildProjectDirectory)/../SftpActivities</BridgeAdapterSource></PropertyGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
 </Project>

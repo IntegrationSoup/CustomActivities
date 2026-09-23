@@ -12,6 +12,9 @@ namespace AzureActivities
     [Parameter("File Name", "Name to give your file in Blob Storage.", isRequired: true)]
     [InMessage(@"", TypeOfMessages.UserDefined)]
     [OutMessage(@"Code Executed Successfully", TypeOfMessages.Text)]
+#if EXTENSION_BRIDGE_RUNNER
+    [Popokey.ExtensionRunners.ExtensionDesigner(typeof(Popokey.ExtensionRunners.AzureDesigner))]
+#endif
     public class BlobSender : AzureActivityBase
     {
         public override void Process(IWorkflowInstance workflowInstance, IActivityInstance activityInstance, Dictionary<string, string> parameters)

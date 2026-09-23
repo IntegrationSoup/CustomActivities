@@ -14,4 +14,6 @@
     <PackageReference Include="Azure.Storage.Blobs" Version="12.14.0" />
   </ItemGroup>
 
+  <PropertyGroup><BridgeAdapterSource>$(MSBuildProjectDirectory)/../AzureActivities/AzureActivities</BridgeAdapterSource></PropertyGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
 </Project>

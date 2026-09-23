@@ -32,3 +32,7 @@ This repository contains Integration Soup extension libraries, their out-of-proc
 - Do not ship `HL7SoupIntegrations.dll` in extension installers.
 - Install the activity DLL to all three product `Custom Libraries` folders.
 - Install runner payload folders only to the Integration Host Server `Custom Libraries` folder.
+
+## Installer framework prerequisite
+
+All ten bridge-enabled Extension Library installers require .NET Framework 4.8 or later because their shared manifest writer targets net48. New installations and upgrades use InstallerTools/RequireNetFramework48.wxi to stop with a runtime download message when the prerequisite is missing; maintenance and uninstall remain available. .NET Framework 4.8.1 also satisfies the check. InstallerTools/Test-NetFramework48Prerequisite.ps1 verifies the built MSI conditions and registry lookup without installing a package.

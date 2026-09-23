@@ -1,4 +1,5 @@
 using Popokey.ExtensionRunners;
+using HL7Soup.Integrations.ExtensionBridge;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,7 +21,7 @@ namespace DataFromPdfActivities.Runner
         {
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.datafrompdf", "DataFromPdfActivities", HandleServerRequest, typeof(DataFromPdfActivities.DataFromPdfActivity)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;

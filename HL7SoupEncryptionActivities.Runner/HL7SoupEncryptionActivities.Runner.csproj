@@ -14,4 +14,6 @@
     <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <PropertyGroup><BridgeAdapterSource>$(MSBuildProjectDirectory)/../HL7SoupEncryptionActivities/HL7SoupEncryptionActivities</BridgeAdapterSource></PropertyGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
 </Project>

@@ -1,0 +1,29 @@
+<Project>
+  <PropertyGroup>
+    <BridgeRevision Condition="'$(BridgeRevision)' == ''">$(InstallerVersion)</BridgeRevision>
+    <BridgeGeneratedDirectory>$(MSBuildProjectDirectory)/obj/$(Configuration)/bridge</BridgeGeneratedDirectory>
+    <BridgeWriterPath>$(MSBuildThisFileDirectory)BridgeManifestWriter/bin/$(Configuration)/net48/BridgeManifestWriter.exe</BridgeWriterPath>
+    <BridgePayloadSource>$(MSBuildThisFileDirectory)../$(BridgeRunnerProject)/bin/$(Configuration)/$(BridgeTargetFramework)/</BridgePayloadSource>
+    <BridgeManagedAssemblyPath>$(BridgePayloadSource)$([System.IO.Path]::GetFileNameWithoutExtension('$(BridgeExecutableName)')).dll</BridgeManagedAssemblyPath>
+    <DefineConstants>$(DefineConstants);BridgePayloadSource=$(BridgePayloadSource)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(BridgeGeneratedDirectory)/BridgeRegistration.wxs" />
+  </ItemGroup>
+  <Target Name="GenerateBridgeRegistration" BeforeTargets="BeforeBuild" DependsOnTargets="GenerateInstallerVersion">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)BridgeManifestWriter/BridgeManifestWriter.csproj" Targets="Restore;Build" Properties="Configuration=$(Configuration)" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)GenerateBridgeInstaller.ps1&quot; -RunnerSourceDir &quot;$(BridgePayloadSource)&quot; -ExecutableName &quot;$(BridgeExecutableName)&quot; -ProviderId &quot;$(BridgeProviderId)&quot; -Revision &quot;$(BridgeRevision)&quot; -InstallerVersionFile &quot;$(MSBuildProjectDirectory)/$(GeneratedInstallerVersionFile)&quot; -OutputDirectory &quot;$(BridgeGeneratedDirectory)&quot; -WriterPath &quot;$(BridgeWriterPath)&quot;" />
+  </Target>
+  <!-- The legacy signing targets cover their staged v4 copies, not these
+       independently packaged v5 runner outputs or the embedded custom action. -->
+  <Target Name="SignBridgePayloads" AfterTargets="SignPayloads"
+          DependsOnTargets="GenerateBridgeRegistration"
+          Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
+    <ItemGroup>
+      <_BridgeSign Include="$(BridgePayloadSource)$(BridgeExecutableName)" />
+      <_BridgeSign Include="$(BridgeManagedAssemblyPath)" Condition="Exists('$(BridgeManagedAssemblyPath)')" />
+      <_BridgeSign Include="$(BridgeWriterPath)" />
+    </ItemGroup>
+    <Exec Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) @(_BridgeSign->'&quot;%(Identity)&quot;', ' ')" />
+  </Target>
+</Project>

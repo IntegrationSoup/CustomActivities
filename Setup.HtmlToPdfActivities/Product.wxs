@@ -22,7 +22,9 @@
     <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
     <Property Id="ARPCOMMENTS" Value="$(var.ProductDescription) $(var.ProductVersionString)" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <?include $(var.ProjectDir)..\InstallerTools\RequireNetFramework48.wxi ?>
 
     <?include $(var.ProjectDir)..\InstallerTools\RequireNetFramework48.wxi ?>
 
@@ -70,17 +72,19 @@
       <ComponentRef Id="LegacyServerServiceRestartComponent" />
       <ComponentRef Id="SoupActivityDllComponent" />
       <ComponentRef Id="WorkflowDesignerActivityDllComponent" />
+      <ComponentGroupRef Id="BridgeProviderComponents" />
+      <ComponentRef Id="LegacyRunnerBridgeJson" />
     </Feature>
 
     <DirectoryRef Id="SERVERCUSTOMLIBRARIESFOLDER">
-      <Component Id="ServerActivityDllComponent" Guid="{81D8A7EE-4C4D-4B61-A3F5-6D6C7630A581}">
+      <Component Bitness="always32" Id="ServerActivityDllComponent" Guid="{81D8A7EE-4C4D-4B61-A3F5-6D6C7630A581}">
         <File Id="ServerActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.HtmlToPdfActivitiesTargetDir)$(var.ActivityFileName)"
               KeyPath="yes" />
       </Component>
 
-      <Component Id="ServerServiceRestartComponent"
+      <Component Bitness="always32" Id="ServerServiceRestartComponent"
                  Guid="{06A60F60-C6D1-4582-8B47-0A4387CD9E06}"
                  Condition="INTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
@@ -96,7 +100,7 @@
                         Wait="yes" />
       </Component>
 
-      <Component Id="LegacyServerServiceRestartComponent"
+      <Component Bitness="always32" Id="LegacyServerServiceRestartComponent"
                  Guid="{41894534-D1DB-42F4-B1E4-BE96D3F8674D}"
                  Condition="LEGACYINTEGRATIONSOUPSERVICEFOUND">
         <RegistryValue Root="HKLM"
@@ -114,7 +118,7 @@
     </DirectoryRef>
 
     <DirectoryRef Id="SERVERRENDERERFOLDER">
-      <Component Id="ServerRendererExeComponent" Guid="{28B3C5E9-F737-4654-8A8D-51C9DDCB4C14}">
+      <Component Bitness="always32" Id="ServerRendererExeComponent" Guid="{28B3C5E9-F737-4654-8A8D-51C9DDCB4C14}">
         <File Id="ServerRendererExeFile"
               Name="$(var.RendererFileName)"
               Source="$(var.HtmlToPdfRendererTargetDir)$(var.RendererFileName)"
@@ -123,7 +127,7 @@
     </DirectoryRef>
 
     <DirectoryRef Id="SOUPCUSTOMLIBRARIESFOLDER">
-      <Component Id="SoupActivityDllComponent" Guid="{0705BFF0-E6E6-4C33-94E8-026013E34A8C}">
+      <Component Bitness="always32" Id="SoupActivityDllComponent" Guid="{0705BFF0-E6E6-4C33-94E8-026013E34A8C}">
         <File Id="SoupActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.HtmlToPdfActivitiesTargetDir)$(var.ActivityFileName)"
@@ -132,7 +136,7 @@
     </DirectoryRef>
 
     <DirectoryRef Id="WORKFLOWDESIGNERCUSTOMLIBRARIESFOLDER">
-      <Component Id="WorkflowDesignerActivityDllComponent" Guid="{C2CE0E67-929C-4B29-91DD-4AF1A0C7CEBC}">
+      <Component Bitness="always32" Id="WorkflowDesignerActivityDllComponent" Guid="{C2CE0E67-929C-4B29-91DD-4AF1A0C7CEBC}">
         <File Id="WorkflowDesignerActivityDllFile"
               Name="$(var.ActivityFileName)"
               Source="$(var.HtmlToPdfActivitiesTargetDir)$(var.ActivityFileName)"
@@ -140,5 +144,10 @@
       </Component>
     </DirectoryRef>
 
+    <DirectoryRef Id="SERVERRENDERERFOLDER">
+      <Component Id="LegacyRunnerBridgeJson" Guid="*" Bitness="always32">
+        <File Source="$(var.BridgePayloadSource)Newtonsoft.Json.dll" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
   </Package>
 </Wix>

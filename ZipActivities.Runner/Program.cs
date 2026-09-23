@@ -1,5 +1,7 @@
 using Popokey.ExtensionRunners;
+using HL7Soup.Integrations.ExtensionBridge;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -14,7 +16,7 @@ namespace ZipActivities.Runner
 
             try
             {
-                int? serverExitCode = PersistentRunnerServer.RunIfRequested(args, HandleServerRequest);
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.zipactivities", "ZipActivities", HandleServerRequest, typeof(ZipActivities.CreateZipFile), typeof(ZipActivities.CreateZipMessage), typeof(ZipActivities.ExtractZipFile)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;
