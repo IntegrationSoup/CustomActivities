@@ -40,7 +40,7 @@
           AfterTargets="ResolveReferences"
           Condition="'$(Configuration)' == 'Release' and '$(SkipCodeSigning)' != 'true'">
     <Exec Condition="Exists('$(MainAssemblyPath)')"
-          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 $(SignTimestampArguments) /sha1 $(CodeSignThumbprint) &quot;$(MainAssemblyPath)&quot;" />
+          Command="$(UnattendedSignCommand) -Paths &quot;$(MainAssemblyPath)&quot;" />
   </Target>
 
   <Target Name="SignMsiOutput"
@@ -51,7 +51,7 @@
     </ItemGroup>
 
     <Exec Condition="'@(_Msi)' != ''"
-          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /d &quot;Integration Soup HL7 Value Transformers Extension Library&quot; $(SignTimestampArguments) /sha1 $(CodeSignThumbprint) &quot;%(_Msi.Identity)&quot;" />
+          Command="$(UnattendedSignCommand) -Paths &quot;@(_Msi, '|')&quot; -Description &quot;Integration Soup HL7 Value Transformers Extension Library&quot;" />
   </Target>
 
   <ItemGroup>

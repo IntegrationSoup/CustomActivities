@@ -2,7 +2,9 @@ param(
     [string]$InstallerVersion = '5.0.2',
     [string]$SigntoolPath = 'C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe',
     [string[]]$AlreadyBuilt = @(),
-    [string]$ResumeArtifactRoot
+    [string]$ResumeArtifactRoot,
+    [ValidateSet('ZipActivities','DataFromPdfActivities','HtmlToPdfActivities','RtfToPdfActivities','AzureActivities','AwsActivities','EncryptionActivities','SftpActivities','HL7ValueTransformers','ValidateHl7Transformer')]
+    [string[]]$Setups = @('ZipActivities','DataFromPdfActivities','HtmlToPdfActivities','RtfToPdfActivities','AzureActivities','AwsActivities','EncryptionActivities','SftpActivities','HL7ValueTransformers','ValidateHl7Transformer')
 )
 $ErrorActionPreference = 'Stop'
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -10,7 +12,6 @@ $artifactRoot = if ($ResumeArtifactRoot) { [IO.Path]::GetFullPath($ResumeArtifac
 if (!$ResumeArtifactRoot -and (Test-Path -LiteralPath $artifactRoot)) { throw 'Use a new release directory; do not overwrite release evidence.' }
 $thumbprint = '1586FB787BD45270D870F90918EF887A121EB6DB'
 $wix = Join-Path $env:USERPROFILE '.nuget/packages/wixtoolset.sdk/5.0.2/tools/net6.0/wix.dll'
-$setups = @('ZipActivities','DataFromPdfActivities','HtmlToPdfActivities','RtfToPdfActivities','AzureActivities','AwsActivities','EncryptionActivities','SftpActivities','HL7ValueTransformers','ValidateHl7Transformer')
 if (@($AlreadyBuilt | Where-Object { $_ -notin $setups }).Count) { throw 'Unknown already-built package.' }
 if (!$ResumeArtifactRoot) { New-Item -ItemType Directory -Path $artifactRoot | Out-Null }
 $sourceCommit = (& git -C $repository rev-parse HEAD).Trim()
@@ -108,4 +109,4 @@ foreach ($setup in $setups) {
     Write-Output "VERIFIED ${name}: $InstallerVersion, Popokey signature and trusted timestamp, $($payloadSignatures.Count) embedded owned payload copies."
 }
 Write-Output "SIGNED_RELEASE=$artifactRoot"
-Write-Output 'All ten packages verified. No installation, staging or publication performed by this script.'
+Write-Output "$($setups.Count) selected packages verified. No installation, staging or publication performed by this script."

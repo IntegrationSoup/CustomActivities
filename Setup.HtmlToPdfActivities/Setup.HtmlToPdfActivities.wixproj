@@ -45,7 +45,7 @@
     </ItemGroup>
 
     <Exec Condition="'@(_Sign)' != ''"
-          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) @(_Sign->'&quot;%(Identity)&quot;', ' ')" />
+          Command="$(UnattendedSignCommand) -Paths &quot;@(_Sign, '|')&quot;" />
   </Target>
 
   <Target Name="SignMsiOutput"
@@ -56,7 +56,7 @@
     </ItemGroup>
 
     <Exec Condition="'@(_Msi)' != ''"
-          Command="&quot;$(SigntoolPath)&quot; sign /v /fd SHA256 /td SHA256 /d &quot;Integration Soup HTML to PDF Extension Library&quot; /tr &quot;$(TimestampUrl)&quot; /sha1 $(CodeSignThumbprint) @(_Msi->'&quot;%(Identity)&quot;', ' ')" />
+          Command="$(UnattendedSignCommand) -Paths &quot;@(_Msi, '|')&quot; -Description &quot;Integration Soup HTML to PDF Extension Library&quot;" />
   </Target>
 
   <ItemGroup>
