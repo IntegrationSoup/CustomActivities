@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$ArtifactDirectory)
+param([Parameter(Mandatory=$true)][string]$ArtifactDirectory, [int]$ExpectedPackageCount = 10)
 $ErrorActionPreference = 'Stop'
 $installer = New-Object -ComObject WindowsInstaller.Installer
 function Rows($database, [string]$table, [string[]]$columns) {
@@ -45,5 +45,5 @@ foreach ($file in Get-ChildItem -LiteralPath $ArtifactDirectory -Filter 'Integra
     $results += [pscustomobject]@{Package=$file.Name;Version=$properties.ProductVersion;NativeServiceControls=0;Sequence=$sequence;Checks='Passed';LiveInstallationTested=$false}
     Write-Output "PASS $($file.Name): service policy, upgrade/rollback sequencing, no native service restart rows."
 }
-Assert ($results.Count -eq 10) 'Expected all ten installers'
+Assert ($results.Count -eq $ExpectedPackageCount) 'Unexpected number of installers'
 $results | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $ArtifactDirectory 'service-policy-table-checks.json') -Encoding utf8
