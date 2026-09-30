@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$ArtifactDirectory)
+param([Parameter(Mandatory=$true)][string]$ArtifactDirectory, [int]$ExpectedPackageCount = 10)
 $ErrorActionPreference = 'Stop'
 $installer = New-Object -ComObject WindowsInstaller.Installer
 function Rows($database, [string]$table, [string[]]$columns) {
@@ -39,11 +39,19 @@ foreach ($file in Get-ChildItem -LiteralPath $ArtifactDirectory -Filter 'Integra
         Assert ([int]$actions[$name].Type -eq $expected) 'Wrong action execution/privilege/rollback type'
     }
     $properties=@{}; foreach($row in Rows $db Property @('Property','Value')) { $properties[$row.Property]=$row.Value }
+    Assert ($properties.MsiLogging -eq 'voicewarmup') 'Automatic verbose MSI logging must be enabled'
+    Assert ($properties.ErrorDialog -eq 'ErrorDlg') 'Native error messages must have a dialog'
+    foreach($table in @('InstallUISequence','AdminUISequence')) {
+        $failure=@(Rows $db $table @('Action','Sequence') | Where-Object Action -eq 'ExtensionInstallFailed')
+        Assert ($failure.Count -eq 1 -and [int]$failure[0].Sequence -eq -3) 'Failure screen must run on the MSI error exit'
+    }
+    $logControl=@(Rows $db Control @('Dialog_','Control','Text') | Where-Object { $_.Dialog_ -eq 'ExtensionInstallFailed' -and $_.Control -eq 'LogPath' })
+    Assert ($logControl.Count -eq 1 -and $logControl[0].Text -eq '[MsiLogFileLocation]') 'Failure screen must show the automatic log path'
     Assert ($properties.HostServiceProviderId -match '^popokey\.[a-z0-9]+$' -and $properties.HostServiceRunnerName -match '\.exe$') 'Provider safety-check identity missing'
     $upgrades=@(Rows $db Upgrade @('VersionMin','VersionMax','Attributes','ActionProperty'))
     Assert (@($upgrades | Where-Object ActionProperty -eq 'WIX_UPGRADE_DETECTED').Count -eq 1 -and @($upgrades | Where-Object ActionProperty -eq 'WIX_DOWNGRADE_DETECTED').Count -eq 1) 'Major upgrade/downgrade protection changed'
     $results += [pscustomobject]@{Package=$file.Name;Version=$properties.ProductVersion;NativeServiceControls=0;Sequence=$sequence;Checks='Passed';LiveInstallationTested=$false}
     Write-Output "PASS $($file.Name): service policy, upgrade/rollback sequencing, no native service restart rows."
 }
-Assert ($results.Count -eq 10) 'Expected all ten installers'
+Assert ($results.Count -eq $ExpectedPackageCount) 'Unexpected number of installers'
 $results | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $ArtifactDirectory 'service-policy-table-checks.json') -Encoding utf8

@@ -1,5 +1,9 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
+    <!-- Native MSI UI and logging remain available even if a managed custom
+         action cannot start. Quiet installs retain their normal exit codes. -->
+    <Property Id="MsiLogging" Value="voicewarmup" />
+    <UIRef Id="ExtensionInstallerUI" />
     <Property Id="HostServiceProviderId" Value="$(var.HostServiceProviderId)" />
     <Property Id="HostServiceRunnerName" Value="$(var.HostServiceRunnerName)" />
     <Binary Id="HostServicePolicy" SourceFile="$(var.HostServiceActionPath)" />

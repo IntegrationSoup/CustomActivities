@@ -1,0 +1,38 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <UI Id="ExtensionInstallerUI">
+      <TextStyle Id="ExtensionNormal" FaceName="Segoe UI" Size="9" />
+      <TextStyle Id="ExtensionHeading" FaceName="Segoe UI" Size="12" Bold="yes" />
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Segoe UI" Size="9" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Segoe UI" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Segoe UI" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="ExtensionNormal" />
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="ExitDialog" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" />
+      <UIRef Id="WixUI_Common" />
+      <UIRef Id="WixUI_ErrorProgressText" />
+
+      <Dialog Id="ExtensionInstallFailed" Width="400" Height="225" Title="[ProductName] - Setup failed" NoMinimize="yes">
+        <Control Id="Heading" Type="Text" X="18" Y="16" Width="364" Height="24" Text="{\ExtensionHeading}Installation failed" />
+        <Control Id="Description" Type="Text" X="18" Y="48" Width="364" Height="42" Text="Setup could not complete [ProductName]. Review any error shown during setup. A diagnostic log was saved automatically; send it to Integration Soup support if you need help." />
+        <Control Id="LogLabel" Type="Text" X="18" Y="100" Width="364" Height="16" Text="Diagnostic log:" />
+        <Control Id="LogPath" Type="Text" X="18" Y="120" Width="364" Height="30" NoPrefix="yes" Text="[MsiLogFileLocation]" />
+        <Control Id="LogHelp" Type="Text" X="18" Y="150" Width="364" Height="28" Text="If no path is shown, check the Windows temporary folder for the latest MSI log. No special logging command is normally needed." />
+        <Control Id="Close" Type="PushButton" X="310" Y="194" Width="72" Height="20" Default="yes" Cancel="yes" Text="Close">
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+      </Dialog>
+      <InstallUISequence>
+        <Show Dialog="ExtensionInstallFailed" OnExit="error" />
+      </InstallUISequence>
+      <AdminUISequence>
+        <Show Dialog="ExtensionInstallFailed" OnExit="error" />
+      </AdminUISequence>
+    </UI>
+  </Fragment>
+</Wix>

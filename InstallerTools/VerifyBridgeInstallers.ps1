@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$ArtifactDirectory)
+param([Parameter(Mandatory=$true)][string]$ArtifactDirectory, [int]$ExpectedPackageCount = 10)
 $ErrorActionPreference = 'Stop'
 $msi = New-Object -ComObject WindowsInstaller.Installer
 function Read-Rows($database, [string]$table, [string[]]$columns) {
@@ -15,7 +15,7 @@ function Read-Rows($database, [string]$table, [string[]]$columns) {
 }
 function Assert($condition, [string]$message) { if (!$condition) { throw $message } }
 $installers = @(Get-ChildItem -LiteralPath $ArtifactDirectory -Filter 'IntegrationSoup.*.msi' -File)
-Assert ($installers.Count -eq 10) 'Expected exactly ten review installers'
+Assert ($installers.Count -eq $ExpectedPackageCount) 'Unexpected number of review installers'
 $providers = @{}
 foreach ($file in $installers) {
     $database = $msi.OpenDatabase($file.FullName, 0)

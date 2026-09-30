@@ -3,6 +3,7 @@ param(
     [string]$SigntoolPath = 'C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe',
     [string[]]$AlreadyBuilt = @(),
     [string]$ResumeArtifactRoot,
+    [Alias('Packages')]
     [ValidateSet('ZipActivities','DataFromPdfActivities','HtmlToPdfActivities','RtfToPdfActivities','AzureActivities','AwsActivities','EncryptionActivities','SftpActivities','HL7ValueTransformers','ValidateHl7Transformer')]
     [string[]]$Setups = @('ZipActivities','DataFromPdfActivities','HtmlToPdfActivities','RtfToPdfActivities','AzureActivities','AwsActivities','EncryptionActivities','SftpActivities','HL7ValueTransformers','ValidateHl7Transformer')
 )
