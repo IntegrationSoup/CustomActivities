@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
 
   <?include $(var.ProjectDir)ProductVariables.wxi ?>
   <?include $(var.GeneratedInstallerVersionFile) ?>
@@ -25,6 +25,10 @@
     <MajorUpgrade Schedule="afterInstallInitialize" DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
     <?include $(var.ProjectDir)..\InstallerTools\RequireNetFramework48.wxi ?>
+
+    <netfx:DotNetCompatibilityCheck Id="ValidationRunnerRuntime" Property="VALIDATION_NET10_CHECK" RuntimeType="core" Version="10.0.0" Platform="x64" RollForward="minor" />
+    <Launch Condition="Installed OR (VALIDATION_NET10_CHECK = &quot;0&quot;)"
+            Message="The HL7 validation runner requires Microsoft .NET 10 Runtime (x64), in addition to .NET Framework 4.8. Install the .NET 10 Runtime and run this installer again. Download: https://dotnet.microsoft.com/en-us/download/dotnet/10.0" />
 
     <CustomActionRef Id="CaptureHostServices" />
 

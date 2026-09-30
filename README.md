@@ -38,3 +38,11 @@ This repository contains Integration Soup extension libraries, their out-of-proc
 ## Installer framework prerequisite
 
 All ten bridge-enabled Extension Library installers require .NET Framework 4.8 or later because their shared manifest writer targets net48. New installations and upgrades use InstallerTools/RequireNetFramework48.wxi to stop with a runtime download message when the prerequisite is missing; maintenance and uninstall remain available. .NET Framework 4.8.1 also satisfies the check. InstallerTools/Test-NetFramework48Prerequisite.ps1 verifies the built MSI conditions and registry lookup without installing a package.
+
+The HL7 validation runner additionally requires the x64 .NET 10 Runtime. Its installer checks compatibility before a new installation or upgrade and explains which runtime to install if it is absent. This requirement is limited to that runner.
+
+All ten installers enable automatic verbose Windows Installer logs. Interactive setup displays the specific MSI error when available, followed by an Installation failed screen with the log location. Quiet deployments remain quiet and return the MSI exit code. Logs normally appear as `MSI*.log` in the installing account's temporary directory; administrators can still choose another location with `/L*v`. If Windows cannot open the MSI at all, package-defined logging and screens cannot run.
+
+The shared service custom action explicitly activates CLR 4 with legacy activation enabled in its embedded configuration. This configuration belongs to the installer helper only; it does not alter host, runner, or machine-wide runtime settings. .NET Framework 3.5 is not required.
+
+`InstallerTools/Test-WebsiteInstallers.ps1` downloads the normal public MSI URLs, verifies publisher and timestamp, optionally pins the expected release version and SHA256 hashes, installs serially, and records automatic logs. Use it on the designated test machines; it installs all ten extensions. `Test-InstalledProviders.ps1` verifies installed runner signatures and two sequential catalog requests per registered provider without invoking external cloud or SFTP operations.
