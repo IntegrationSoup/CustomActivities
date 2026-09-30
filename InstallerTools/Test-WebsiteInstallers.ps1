@@ -43,7 +43,10 @@ foreach($package in $packages) {
             $process=Start-Process msiexec.exe -ArgumentList @('/i',('"'+$file+'"'),'/qn','/norestart') -WindowStyle Hidden -PassThru
             if(!$process.WaitForExit(180000)) {throw 'Installer exceeded three minutes; stop this test before running another MSI'}
             $result.ExitCode=$process.ExitCode
-            $result.AutomaticLogs=@(Get-ChildItem $env:TEMP -Filter 'MSI*.log' -ErrorAction SilentlyContinue | Where-Object LastWriteTime -ge $start | Select-Object -ExpandProperty FullName)
+            # SYSTEM can use Windows\SystemTemp through GetTempPath2 while
+            # its TEMP environment variable continues to name Windows\Temp.
+            $logDirectories=@($env:TEMP,[IO.Path]::GetTempPath()) | Select-Object -Unique
+            $result.AutomaticLogs=@($logDirectories | ForEach-Object {Get-ChildItem -LiteralPath $_ -Filter 'MSI*.log' -ErrorAction SilentlyContinue} | Where-Object LastWriteTime -ge $start | Select-Object -ExpandProperty FullName -Unique)
             if($process.ExitCode -notin @(0,3010)) {throw ('Installer failed with exit code '+$process.ExitCode)}
             if($ExpectedVersion -and !$result.AutomaticLogs.Count) {throw 'Installation did not produce an automatic log'}
         }

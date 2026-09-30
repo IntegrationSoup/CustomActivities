@@ -113,6 +113,19 @@ try {
             Assert-Check ($session.EvaluateCondition($launch[0].Condition) -eq 1) 'Maintenance must remain available without .NET.'
             Set-MsiProperty $session 'REMOVE' 'ALL'
             Assert-Check ($session.EvaluateCondition($launch[0].Condition) -eq 1) 'Uninstall must remain available without .NET.'
+            if ([IO.Path]::GetFileName($fullPath) -eq 'IntegrationSoup.ValidateHl7Transformer.msi') {
+                $modern = @(Get-MsiRows $database 'LaunchCondition' @('Condition', 'Description') |
+                    Where-Object { $_.Condition -match 'VALIDATION_NET10_CHECK' })
+                Assert-Check ($modern.Count -eq 1 -and $modern[0].Description -match '.NET 10 Runtime \(x64\)') 'Validation must explain its x64 .NET 10 prerequisite.'
+                Set-MsiProperty $session 'Installed' ''
+                foreach ($result in @('', '0', '13', '12289', '12290', '12291', '12292', '12293', '12294')) {
+                    Set-MsiProperty $session 'VALIDATION_NET10_CHECK' $result
+                    Assert-Check ($session.EvaluateCondition($modern[0].Condition) -eq [int]($result -eq '0')) 'Only a successful native runtime check may allow validation installation.'
+                }
+                Set-MsiProperty $session 'Installed' '1'
+                Assert-Check ($session.EvaluateCondition($modern[0].Condition) -eq 1) 'Validation maintenance/uninstall must remain available without its runtime.'
+                Write-Host 'PASS: validation runtime success, missing runtime, detection errors, and maintenance/uninstall.'
+            }
             Write-Host "PASS: $(Split-Path $fullPath -Leaf) - 8 release cases, false-property, maintenance/uninstall, registry lookup, and UI/silent sequencing."
         }
         finally {
