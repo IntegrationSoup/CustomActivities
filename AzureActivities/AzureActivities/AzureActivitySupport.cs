@@ -89,7 +89,7 @@ namespace AzureActivities
 
         private static string GetRequiredParameter(Dictionary<string, string> parameters, string name, bool preserveWhitespace = false)
         {
-            if (parameters.TryGetValue(name, out string value) && !string.IsNullOrWhiteSpace(value))
+            if (parameters.TryGetValue(name, out string value) && (preserveWhitespace ? !string.IsNullOrEmpty(value) : !string.IsNullOrWhiteSpace(value)))
             {
                 return preserveWhitespace ? value : value.Trim();
             }

@@ -194,7 +194,7 @@ namespace AzureActivities.Runner
                 throw new InvalidOperationException("Container Name is required.");
             }
 
-            if (string.IsNullOrWhiteSpace(request.FileName))
+            if (string.IsNullOrEmpty(request.FileName))
             {
                 throw new InvalidOperationException("File Name is required.");
             }
@@ -222,7 +222,7 @@ namespace AzureActivities.Runner
                 throw new InvalidOperationException("Container Name is required.");
             }
 
-            if (string.IsNullOrWhiteSpace(request.FileName))
+            if (string.IsNullOrEmpty(request.FileName))
             {
                 throw new InvalidOperationException("File Name is required.");
             }

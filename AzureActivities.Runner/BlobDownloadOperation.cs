@@ -14,7 +14,7 @@ namespace AzureActivities.Runner
 
         internal static BlobDownloadResponse Execute(BlobDownloadRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.ConnectionString) || string.IsNullOrWhiteSpace(request.ContainerName) || string.IsNullOrWhiteSpace(request.FileName))
+            if (request == null || string.IsNullOrWhiteSpace(request.ConnectionString) || string.IsNullOrWhiteSpace(request.ContainerName) || string.IsNullOrEmpty(request.FileName))
                 throw new ArgumentException("Connection String, Container Name and File Name are required.");
             if (request.FileName.Length > 1024 || request.ContainerName.Length > 63 || request.ConnectionString.Length > 16384 || request.VersionId?.Length > 256 || request.ExpectedETag?.Length > 256)
                 throw new ArgumentException("A blob identity or connection setting exceeds its supported length.");

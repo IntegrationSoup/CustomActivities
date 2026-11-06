@@ -65,6 +65,8 @@ namespace AzureActivities.Tests
                 Check(Run("Azure Blob Download", Params("File Name", "bom.txt"), 13).ResponseMessage.Text == "\uFEFFA", "UTF-8 BOM preserved as text character");
                 Download(new byte[] { 1 }, r => Check(Uri.UnescapeDataString(new Uri(r.Uri).AbsolutePath) == "/inbox/ \u00e9/a ", "Unicode and significant spaces preserved on wire"));
                 Check(Run("Azure Blob Download", Params("File Name", " \u00e9/a "), 14).ResponseMessage.Text == "AQ==", "Unicode and significant whitespace accepted");
+                Download(new byte[] { 1 }, r => Check(Uri.UnescapeDataString(new Uri(r.Uri).AbsolutePath) == "/inbox/   ", "whitespace-only blob identity preserved"));
+                Check(Run("Azure Blob Download", Params("File Name", "   "), 14).ResponseMessage.Text == "AQ==", "nonempty whitespace-only blob name is valid");
 
                 if (!args.Contains("--quick"))
                 {

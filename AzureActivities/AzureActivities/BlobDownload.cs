@@ -57,7 +57,7 @@ namespace AzureActivities
         private static string Required(Dictionary<string, string> parameters, string name)
         {
             string value = Value(parameters, name);
-            if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException("Parameter '" + name + "' is required.");
+            if (name == "File Name" ? string.IsNullOrEmpty(value) : string.IsNullOrWhiteSpace(value)) throw new ArgumentException("Parameter '" + name + "' is required.");
             return value;
         }
     }
