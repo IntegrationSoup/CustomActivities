@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <StartupObject>RuntimeTests</StartupObject>
+    <!-- Transport tests do not source-link any product activity adapters. -->
+    <BridgeAdapterSource>$(MSBuildProjectDirectory)/NoActivities</BridgeAdapterSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ExtensionRunnerHosting/*.cs" />
+    <Compile Include="../BridgeRuntime.Tests/TransportFixture.cs" Link="TransportFixture.cs" />
+  </ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>

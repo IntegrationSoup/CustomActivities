@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <StartupObject>AzureActivities.Tests.Checks</StartupObject>
+    <BridgeAdapterSource>$(MSBuildProjectDirectory)/../AzureActivities/AzureActivities</BridgeAdapterSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ExtensionRunnerHosting/*.cs" />
+    <Compile Include="../AzureActivities.Runner/*.cs" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.14.0" />
+  </ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>

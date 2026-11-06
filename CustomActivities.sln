@@ -83,6 +83,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BridgeCompatibility.Tests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BridgeRuntime.Tests", "BridgeRuntime.Tests\BridgeRuntime.Tests.csproj", "{8A4B947F-105B-497F-BA7B-6825A3F4A2C9}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureActivities.Tests", "AzureActivities.Tests\AzureActivities.Tests.csproj", "{A7856294-390C-4236-A774-BF8FB3CAC763}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BridgeTransport.Tests", "BridgeTransport.Tests\BridgeTransport.Tests.csproj", "{20D82616-D8BE-45F5-844B-D4C029448419}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Azure|Any CPU = Azure|Any CPU
@@ -96,6 +100,14 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20D82616-D8BE-45F5-844B-D4C029448419}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20D82616-D8BE-45F5-844B-D4C029448419}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20D82616-D8BE-45F5-844B-D4C029448419}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20D82616-D8BE-45F5-844B-D4C029448419}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A7856294-390C-4236-A774-BF8FB3CAC763}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7856294-390C-4236-A774-BF8FB3CAC763}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7856294-390C-4236-A774-BF8FB3CAC763}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7856294-390C-4236-A774-BF8FB3CAC763}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D905DBEF-9F83-401A-B6E8-250B14E05FC0}.Azure|Any CPU.ActiveCfg = Release|Any CPU
 		{D905DBEF-9F83-401A-B6E8-250B14E05FC0}.Azure|Any CPU.Build.0 = Release|Any CPU
 		{D905DBEF-9F83-401A-B6E8-250B14E05FC0}.Azure|x64.ActiveCfg = Release|Any CPU

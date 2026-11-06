@@ -10,6 +10,7 @@ namespace AzureActivities.Runner
 {
     internal static class Program
     {
+        internal static Func<string, string, BlobClientOptions, BlobContainerClient> ContainerClientFactory { get; set; }
         private static readonly Dictionary<string, BlobContainerClient> containerClientCache = new Dictionary<string, BlobContainerClient>(StringComparer.Ordinal);
 
         private static int Main(string[] args)
@@ -18,7 +19,7 @@ namespace AzureActivities.Runner
 
             try
             {
-                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.azureactivities", "AzureActivities", HandleServerRequest, typeof(AzureActivities.BlobSender)));
+                int? serverExitCode = BridgeRunner.RunIfRequested(args, HandleServerRequest, () => new BridgeProvider("popokey.azureactivities", "AzureActivities", HandleServerRequest, typeof(AzureActivities.BlobSender), typeof(AzureActivities.BlobDownload)));
                 if (serverExitCode.HasValue)
                 {
                     return serverExitCode.Value;
@@ -70,6 +71,8 @@ namespace AzureActivities.Runner
 
         private static string HandleServerRequest(string operation, string payloadJson)
         {
+            if (string.Equals(operation, "download-blob", StringComparison.OrdinalIgnoreCase))
+                return PersistentRunnerJson.Serialize(BlobDownloadOperation.Execute(PersistentRunnerJson.Deserialize<AzureActivities.BlobDownloadRequest>(payloadJson), SourceAdapterDispatch.Cancellation));
             if (!string.Equals(operation, "upload-blob", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Unsupported Azure runner operation '{operation}'.");
@@ -89,7 +92,11 @@ namespace AzureActivities.Runner
                 ConnectionString = request.ConnectionString,
                 ContainerName = request.ContainerName,
                 FileName = request.FileName,
-                InputBase64 = Convert.ToBase64String(File.ReadAllBytes(request.LocalInputPath))
+                InputBase64 = Convert.ToBase64String(File.ReadAllBytes(request.LocalInputPath)),
+                NewContainerAccess = request.NewContainerAccess,
+                CreateContainerIfMissing = request.CreateContainerIfMissing,
+                OverwriteExistingBlob = request.OverwriteExistingBlob,
+                ExpectedETag = request.ExpectedETag
             };
 
             BlobUploadPipeResponse pipeResponse = ExecutePipeRequest(pipeRequest);
@@ -97,46 +104,90 @@ namespace AzureActivities.Runner
             {
                 Success = true,
                 Message = pipeResponse.Message,
-                BlobPath = pipeResponse.BlobPath
+                BlobPath = pipeResponse.BlobPath,
+                ETag = pipeResponse.ETag,
+                VersionId = pipeResponse.VersionId
             };
         }
 
         private static BlobUploadPipeResponse ExecutePipeRequest(BlobUploadPipeRequest request)
         {
             ValidatePipeRequest(request);
+            bool createContainer = false;
+            if (!string.IsNullOrWhiteSpace(request.CreateContainerIfMissing) && !bool.TryParse(request.CreateContainerIfMissing.Trim(), out createContainer))
+                throw new ArgumentException("Create Container If Missing must be False or True.");
+            bool overwrite = false;
+            if (!string.IsNullOrWhiteSpace(request.OverwriteExistingBlob) && !bool.TryParse(request.OverwriteExistingBlob.Trim(), out overwrite))
+                throw new ArgumentException("Overwrite Existing Blob must be False or True.");
+            if (!overwrite && !string.IsNullOrWhiteSpace(request.ExpectedETag))
+                throw new ArgumentException("Expected ETag requires Overwrite Existing Blob=True.");
+            if (request.ExpectedETag?.Trim() == "*") throw new ArgumentException("Expected ETag must identify a specific blob; wildcard * is not supported.");
+            var access = Azure.Storage.Blobs.Models.PublicAccessType.None;
+            if (!string.IsNullOrWhiteSpace(request.NewContainerAccess) && !string.Equals(request.NewContainerAccess.Trim(), "Private", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(request.NewContainerAccess.Trim(), "Blob", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("New Container Access must be Private or Blob.");
+                access = Azure.Storage.Blobs.Models.PublicAccessType.Blob;
+            }
+            if (!createContainer && access != Azure.Storage.Blobs.Models.PublicAccessType.None)
+                throw new ArgumentException("Public new-container access requires Create Container If Missing=True.");
 
             string containerLower = request.ContainerName.ToLowerInvariant();
-            BlobContainerClient container = GetContainerClient(request.ConnectionString, containerLower);
             byte[] inputBytes = Convert.FromBase64String(request.InputBase64 ?? string.Empty);
+            if (inputBytes.Length > 8 * 1024 * 1024) throw new InvalidOperationException("Azure Blob Upload supports at most 8 MiB per invocation.");
 
-            using (MemoryStream stream = new MemoryStream(inputBytes, writable: false))
+            try
             {
-                var createResponse = container.CreateIfNotExists();
-                if (createResponse != null && createResponse.GetRawResponse().Status == 201)
+                BlobContainerClient container = GetContainerClient(request.ConnectionString, containerLower);
+                using (MemoryStream stream = new MemoryStream(inputBytes, writable: false))
                 {
-                    container.SetAccessPolicy(Azure.Storage.Blobs.Models.PublicAccessType.Blob);
+                    BlobClient blob = AzureBlobIdentity.ExactClient(container, request.FileName);
+                    // Existing containers retain their permissions; do not call SetAccessPolicy.
+                    if (createContainer) container.CreateIfNotExists(access);
+
+                    var conditions = !overwrite ? new Azure.Storage.Blobs.Models.BlobRequestConditions { IfNoneMatch = Azure.ETag.All }
+                        : string.IsNullOrWhiteSpace(request.ExpectedETag) ? null : new Azure.Storage.Blobs.Models.BlobRequestConditions { IfMatch = new Azure.ETag(request.ExpectedETag) };
+                    // Known-length, bounded messages use one PUT, never OpenWrite or a pre-delete.
+                    var uploaded = blob.Upload(stream, new Azure.Storage.Blobs.Models.BlobUploadOptions { Conditions = conditions,
+                        TransferOptions = new Azure.Storage.StorageTransferOptions { InitialTransferSize = 16 * 1024 * 1024, MaximumTransferSize = 16 * 1024 * 1024, MaximumConcurrency = 1 } }).Value;
+
+                    return new BlobUploadPipeResponse
+                    {
+                        Message = "Code Executed Successfully",
+                        BlobPath = containerLower + "/" + request.FileName,
+                        ETag = uploaded.ETag.ToString(),
+                        VersionId = uploaded.VersionId
+                    };
                 }
-
-                BlobClient blob = container.GetBlobClient(request.FileName);
-                blob.DeleteIfExists(Azure.Storage.Blobs.Models.DeleteSnapshotsOption.IncludeSnapshots);
-                blob.Upload(stream);
-
-                return new BlobUploadPipeResponse
-                {
-                    Message = "Code Executed Successfully",
-                    BlobPath = containerLower + "/" + request.FileName
-                };
             }
+            catch (Azure.RequestFailedException exception)
+            {
+                // The v4 pipe returns Exception.Message. Never include SDK response
+                // bodies, signed URLs, headers, credentials or an inner SDK exception.
+                string reason = exception.Status == 403 ? "Access was denied. Check write or container-creation permissions."
+                    : exception.Status == 404 ? "The container was not found."
+                    : exception.Status == 409 || exception.Status == 412 ? "The object or container did not meet the requested write or access conditions."
+                    : "Check the storage connection and network.";
+                throw new InvalidOperationException("Azure Blob Upload failed. Azure HTTP status: " + exception.Status + ". " + reason);
+            }
+            catch (ArgumentException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the connection string and resource names."); }
+            catch (FormatException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the connection string and resource names."); }
+            catch (System.Net.Http.HttpRequestException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the storage connection and network."); }
+            catch (IOException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the storage connection and network."); }
         }
 
         private static BlobContainerClient GetContainerClient(string connectionString, string containerName)
         {
+            var options = new BlobClientOptions { TrimBlobNameSlashes = false };
+            options.Retry.MaxRetries = 0;
+            options.Retry.NetworkTimeout = TimeSpan.FromSeconds(30);
+            if (ContainerClientFactory != null) return ContainerClientFactory(connectionString, containerName, options);
             string cacheKey = connectionString + "\n" + containerName;
             lock (containerClientCache)
             {
                 if (!containerClientCache.TryGetValue(cacheKey, out BlobContainerClient client))
                 {
-                    client = new BlobContainerClient(connectionString, containerName);
+                    client = new BlobContainerClient(connectionString, containerName, options);
                     containerClientCache[cacheKey] = client;
                 }
 
@@ -161,7 +212,7 @@ namespace AzureActivities.Runner
                 throw new InvalidOperationException("Container Name is required.");
             }
 
-            if (string.IsNullOrWhiteSpace(request.FileName))
+            if (string.IsNullOrEmpty(request.FileName))
             {
                 throw new InvalidOperationException("File Name is required.");
             }
@@ -189,7 +240,7 @@ namespace AzureActivities.Runner
                 throw new InvalidOperationException("Container Name is required.");
             }
 
-            if (string.IsNullOrWhiteSpace(request.FileName))
+            if (string.IsNullOrEmpty(request.FileName))
             {
                 throw new InvalidOperationException("File Name is required.");
             }
@@ -222,6 +273,14 @@ namespace AzureActivities.Runner
         [DataContract]
         private sealed class BlobUploadRequest
         {
+            [DataMember(Order = 5)]
+            public string NewContainerAccess { get; set; }
+            [DataMember(Order = 6)]
+            public string OverwriteExistingBlob { get; set; }
+            [DataMember(Order = 7)]
+            public string ExpectedETag { get; set; }
+            [DataMember(Order = 8)]
+            public string CreateContainerIfMissing { get; set; }
             [DataMember(Order = 1)]
             public string ConnectionString { get; set; }
 
@@ -238,6 +297,8 @@ namespace AzureActivities.Runner
         [DataContract]
         private sealed class BlobUploadResponse
         {
+            [DataMember(Order = 5)] public string ETag { get; set; }
+            [DataMember(Order = 6)] public string VersionId { get; set; }
             [DataMember(Order = 1)]
             public bool Success { get; set; }
 
@@ -251,6 +312,14 @@ namespace AzureActivities.Runner
         [DataContract]
         private sealed class BlobUploadPipeRequest
         {
+            [DataMember(Order = 5)]
+            public string NewContainerAccess { get; set; }
+            [DataMember(Order = 6)]
+            public string OverwriteExistingBlob { get; set; }
+            [DataMember(Order = 7)]
+            public string ExpectedETag { get; set; }
+            [DataMember(Order = 8)]
+            public string CreateContainerIfMissing { get; set; }
             [DataMember(Order = 1)]
             public string ConnectionString { get; set; }
 
@@ -267,6 +336,8 @@ namespace AzureActivities.Runner
         [DataContract]
         private sealed class BlobUploadPipeResponse
         {
+            [DataMember(Order = 3)] public string ETag { get; set; }
+            [DataMember(Order = 4)] public string VersionId { get; set; }
             [DataMember(Order = 1)]
             public string Message { get; set; }
 

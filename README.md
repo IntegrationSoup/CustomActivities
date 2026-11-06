@@ -9,6 +9,9 @@ This repository contains Integration Soup extension libraries, their out-of-proc
 - Runner executables still support one-shot command-line execution for manual troubleshooting.
 
 ## Key Folders
+- `AzureActivities` / `AzureActivities.Runner`
+  - Azure Blob Upload and read-only Blob Download
+  - [Download contract, container access and compatibility](AzureActivities/BLOB_DOWNLOAD.md)
 - `ExtensionRunnerHosting`
   - shared named-pipe/process-lifetime code for the persistent runner model
 - `Setup.*`
