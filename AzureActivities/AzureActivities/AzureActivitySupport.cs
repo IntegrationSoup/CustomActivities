@@ -20,7 +20,11 @@ namespace AzureActivities
             {
                 ConnectionString = GetRequiredParameter(parameters, "Connection String"),
                 ContainerName = GetRequiredParameter(parameters, "Container Name"),
-                FileName = GetRequiredParameter(parameters, "File Name")
+                FileName = GetRequiredParameter(parameters, "File Name", preserveWhitespace: true),
+                CreateContainerIfMissing = parameters.TryGetValue("Create Container If Missing", out string create) ? create : null,
+                NewContainerAccess = parameters.TryGetValue("New Container Access", out string access) ? access : null,
+                OverwriteExistingBlob = parameters.TryGetValue("Overwrite Existing Blob", out string overwrite) ? overwrite : null,
+                ExpectedETag = parameters.TryGetValue("Expected ETag", out string etag) ? etag : null
             };
         }
 
@@ -60,14 +64,7 @@ namespace AzureActivities
             string text = message.Text ?? string.Empty;
             if (IsBinaryMessage(message))
             {
-                try
-                {
-                    return Convert.FromBase64String(text);
-                }
-                catch (FormatException)
-                {
-                    return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
-                }
+                return Convert.FromBase64String(text);
             }
 
             return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
@@ -90,11 +87,11 @@ namespace AzureActivities
             return string.Equals(reflectedMessageType?.ToString(), "Binary", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string GetRequiredParameter(Dictionary<string, string> parameters, string name)
+        private static string GetRequiredParameter(Dictionary<string, string> parameters, string name, bool preserveWhitespace = false)
         {
             if (parameters.TryGetValue(name, out string value) && !string.IsNullOrWhiteSpace(value))
             {
-                return value.Trim();
+                return preserveWhitespace ? value : value.Trim();
             }
 
             throw new ArgumentException($"Parameter '{name}' is required.");
@@ -110,6 +107,11 @@ namespace AzureActivities
 
         private static readonly PersistentRunnerClient runnerClient = new PersistentRunnerClient("Azure runner");
 
+        internal static BlobDownloadResponse Download(BlobDownloadRequest request)
+        {
+            return runnerClient.Invoke<BlobDownloadRequest, BlobDownloadResponse>(ResolveRunnerExecutablePath(), "download-blob", request, RunnerTimeoutMilliseconds);
+        }
+
         internal static BlobUploadResponse Upload(BlobUploadRequest request, byte[] inputBytes)
         {
             string runnerExecutablePath = ResolveRunnerExecutablePath();
@@ -124,7 +126,11 @@ namespace AzureActivities
                         ConnectionString = request.ConnectionString,
                         ContainerName = request.ContainerName,
                         FileName = request.FileName,
-                        InputBase64 = Convert.ToBase64String(inputBytes ?? Array.Empty<byte>())
+                        InputBase64 = Convert.ToBase64String(inputBytes ?? Array.Empty<byte>()),
+                        NewContainerAccess = request.NewContainerAccess,
+                        CreateContainerIfMissing = request.CreateContainerIfMissing,
+                        OverwriteExistingBlob = request.OverwriteExistingBlob,
+                        ExpectedETag = request.ExpectedETag
                     },
                     RunnerTimeoutMilliseconds);
 
@@ -132,7 +138,9 @@ namespace AzureActivities
                 {
                     Success = true,
                     Message = response?.Message ?? "Code Executed Successfully",
-                    BlobPath = response?.BlobPath ?? string.Empty
+                    BlobPath = response?.BlobPath ?? string.Empty,
+                    ETag = response?.ETag,
+                    VersionId = response?.VersionId
                 };
             }
             catch (Exception ex)
@@ -158,6 +166,10 @@ namespace AzureActivities
 
         internal sealed class BlobUploadRequest
         {
+            public string NewContainerAccess { get; set; }
+            public string CreateContainerIfMissing { get; set; }
+            public string OverwriteExistingBlob { get; set; }
+            public string ExpectedETag { get; set; }
             internal string ConnectionString { get; set; }
             internal string ContainerName { get; set; }
             internal string FileName { get; set; }
@@ -165,6 +177,8 @@ namespace AzureActivities
 
         internal sealed class BlobUploadResponse
         {
+            public string ETag { get; set; }
+            public string VersionId { get; set; }
             internal bool Success { get; set; }
             internal string Message { get; set; }
             internal string BlobPath { get; set; }
@@ -173,6 +187,14 @@ namespace AzureActivities
         [DataContract]
         private sealed class BlobUploadPipeRequest
         {
+            [DataMember(Order = 5)]
+            public string NewContainerAccess { get; set; }
+            [DataMember(Order = 6)]
+            public string OverwriteExistingBlob { get; set; }
+            [DataMember(Order = 7)]
+            public string ExpectedETag { get; set; }
+            [DataMember(Order = 8)]
+            public string CreateContainerIfMissing { get; set; }
             [DataMember(Order = 1)]
             public string ConnectionString { get; set; }
 
@@ -189,6 +211,8 @@ namespace AzureActivities
         [DataContract]
         private sealed class BlobUploadPipeResponse
         {
+            [DataMember(Order = 3)] public string ETag { get; set; }
+            [DataMember(Order = 4)] public string VersionId { get; set; }
             [DataMember(Order = 1)]
             public string Message { get; set; }
 
