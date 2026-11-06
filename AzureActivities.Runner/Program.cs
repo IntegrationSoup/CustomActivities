@@ -10,7 +10,7 @@ namespace AzureActivities.Runner
 {
     internal static class Program
     {
-        internal static Func<string, string, BlobContainerClient> ContainerClientFactory { get; set; }
+        internal static Func<string, string, BlobClientOptions, BlobContainerClient> ContainerClientFactory { get; set; }
         private static readonly Dictionary<string, BlobContainerClient> containerClientCache = new Dictionary<string, BlobContainerClient>(StringComparer.Ordinal);
 
         private static int Main(string[] args)
@@ -72,7 +72,7 @@ namespace AzureActivities.Runner
         private static string HandleServerRequest(string operation, string payloadJson)
         {
             if (string.Equals(operation, "download-blob", StringComparison.OrdinalIgnoreCase))
-                return PersistentRunnerJson.Serialize(BlobDownloadOperation.Execute(PersistentRunnerJson.Deserialize<AzureActivities.BlobDownloadRequest>(payloadJson)));
+                return PersistentRunnerJson.Serialize(BlobDownloadOperation.Execute(PersistentRunnerJson.Deserialize<AzureActivities.BlobDownloadRequest>(payloadJson), SourceAdapterDispatch.Cancellation));
             if (!string.Equals(operation, "upload-blob", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Unsupported Azure runner operation '{operation}'.");
@@ -121,6 +121,7 @@ namespace AzureActivities.Runner
                 throw new ArgumentException("Overwrite Existing Blob must be False or True.");
             if (!overwrite && !string.IsNullOrWhiteSpace(request.ExpectedETag))
                 throw new ArgumentException("Expected ETag requires Overwrite Existing Blob=True.");
+            if (request.ExpectedETag?.Trim() == "*") throw new ArgumentException("Expected ETag must identify a specific blob; wildcard * is not supported.");
             var access = Azure.Storage.Blobs.Models.PublicAccessType.None;
             if (!string.IsNullOrWhiteSpace(request.NewContainerAccess) && !string.Equals(request.NewContainerAccess.Trim(), "Private", StringComparison.OrdinalIgnoreCase))
             {
@@ -132,43 +133,60 @@ namespace AzureActivities.Runner
                 throw new ArgumentException("Public new-container access requires Create Container If Missing=True.");
 
             string containerLower = request.ContainerName.ToLowerInvariant();
-            BlobContainerClient container = GetContainerClient(request.ConnectionString, containerLower);
             byte[] inputBytes = Convert.FromBase64String(request.InputBase64 ?? string.Empty);
             if (inputBytes.Length > 8 * 1024 * 1024) throw new InvalidOperationException("Azure Blob Upload supports at most 8 MiB per invocation.");
 
-            using (MemoryStream stream = new MemoryStream(inputBytes, writable: false))
+            try
             {
-                // Existing containers retain their permissions; do not call SetAccessPolicy.
-                if (createContainer) container.CreateIfNotExists(access);
-
-                BlobClient blob = container.GetBlobClient(request.FileName);
-                var conditions = !overwrite ? new Azure.Storage.Blobs.Models.BlobRequestConditions { IfNoneMatch = Azure.ETag.All }
-                    : string.IsNullOrWhiteSpace(request.ExpectedETag) ? null : new Azure.Storage.Blobs.Models.BlobRequestConditions { IfMatch = new Azure.ETag(request.ExpectedETag) };
-                // Known-length, bounded messages use one PUT, never OpenWrite or a pre-delete.
-                var uploaded = blob.Upload(stream, new Azure.Storage.Blobs.Models.BlobUploadOptions { Conditions = conditions,
-                    TransferOptions = new Azure.Storage.StorageTransferOptions { InitialTransferSize = 16 * 1024 * 1024, MaximumTransferSize = 16 * 1024 * 1024, MaximumConcurrency = 1 } }).Value;
-
-                return new BlobUploadPipeResponse
+                BlobContainerClient container = GetContainerClient(request.ConnectionString, containerLower);
+                using (MemoryStream stream = new MemoryStream(inputBytes, writable: false))
                 {
-                    Message = "Code Executed Successfully",
-                    BlobPath = containerLower + "/" + request.FileName,
-                    ETag = uploaded.ETag.ToString(),
-                    VersionId = uploaded.VersionId
-                };
+                    BlobClient blob = AzureBlobIdentity.ExactClient(container, request.FileName);
+                    // Existing containers retain their permissions; do not call SetAccessPolicy.
+                    if (createContainer) container.CreateIfNotExists(access);
+
+                    var conditions = !overwrite ? new Azure.Storage.Blobs.Models.BlobRequestConditions { IfNoneMatch = Azure.ETag.All }
+                        : string.IsNullOrWhiteSpace(request.ExpectedETag) ? null : new Azure.Storage.Blobs.Models.BlobRequestConditions { IfMatch = new Azure.ETag(request.ExpectedETag) };
+                    // Known-length, bounded messages use one PUT, never OpenWrite or a pre-delete.
+                    var uploaded = blob.Upload(stream, new Azure.Storage.Blobs.Models.BlobUploadOptions { Conditions = conditions,
+                        TransferOptions = new Azure.Storage.StorageTransferOptions { InitialTransferSize = 16 * 1024 * 1024, MaximumTransferSize = 16 * 1024 * 1024, MaximumConcurrency = 1 } }).Value;
+
+                    return new BlobUploadPipeResponse
+                    {
+                        Message = "Code Executed Successfully",
+                        BlobPath = containerLower + "/" + request.FileName,
+                        ETag = uploaded.ETag.ToString(),
+                        VersionId = uploaded.VersionId
+                    };
+                }
             }
+            catch (Azure.RequestFailedException exception)
+            {
+                // The v4 pipe returns Exception.Message. Never include SDK response
+                // bodies, signed URLs, headers, credentials or an inner SDK exception.
+                string reason = exception.Status == 403 ? "Access was denied. Check write or container-creation permissions."
+                    : exception.Status == 404 ? "The container was not found."
+                    : exception.Status == 409 || exception.Status == 412 ? "The object or container did not meet the requested write or access conditions."
+                    : "Check the storage connection and network.";
+                throw new InvalidOperationException("Azure Blob Upload failed. Azure HTTP status: " + exception.Status + ". " + reason);
+            }
+            catch (ArgumentException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the connection string and resource names."); }
+            catch (FormatException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the connection string and resource names."); }
+            catch (System.Net.Http.HttpRequestException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the storage connection and network."); }
+            catch (IOException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the storage connection and network."); }
         }
 
         private static BlobContainerClient GetContainerClient(string connectionString, string containerName)
         {
-            if (ContainerClientFactory != null) return ContainerClientFactory(connectionString, containerName);
+            var options = new BlobClientOptions { TrimBlobNameSlashes = false };
+            options.Retry.MaxRetries = 0;
+            options.Retry.NetworkTimeout = TimeSpan.FromSeconds(30);
+            if (ContainerClientFactory != null) return ContainerClientFactory(connectionString, containerName, options);
             string cacheKey = connectionString + "\n" + containerName;
             lock (containerClientCache)
             {
                 if (!containerClientCache.TryGetValue(cacheKey, out BlobContainerClient client))
                 {
-                    var options = new BlobClientOptions();
-                    options.Retry.MaxRetries = 0;
-                    options.Retry.NetworkTimeout = TimeSpan.FromSeconds(30);
                     client = new BlobContainerClient(connectionString, containerName, options);
                     containerClientCache[cacheKey] = client;
                 }

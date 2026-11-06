@@ -155,6 +155,7 @@ namespace Popokey.ExtensionRunners
                         try
                         {
                             SourceAdapterDispatch.Handler = legacy;
+                            SourceAdapterDispatch.Cancellation = cancellation.Token;
                             if (transformer) ((CustomTransformer)Activator.CreateInstance(types[descriptor.TypeName])).Transform(context, context.CurrentActivityInstance.Message, parameters);
                             else
                             {
@@ -174,16 +175,18 @@ namespace Popokey.ExtensionRunners
                             }
                             return context.Complete();
                         }
-                        catch
+                        catch (Exception exception)
                         {
                             sessions.Remove(request.SessionId);
                             // Close is best-effort resource cleanup, never a replay or rollback
                             // of Process. Preserve the original uncertain execution failure.
                             if (session != null && request.Phase != "Close")
                                 try { session.Activity.Close(); } catch { }
+                            if (exception is OperationCanceledException && cancellation.IsCancellationRequested)
+                                throw new BridgeFault(deadline <= DateTimeOffset.UtcNow ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution was cancelled; the session was invalidated and the activity will not be replayed.");
                             throw;
                         }
-                        finally { SourceAdapterDispatch.Handler = null; lock (controlGate) active = null; }
+                        finally { SourceAdapterDispatch.Handler = null; SourceAdapterDispatch.Cancellation = default; lock (controlGate) active = null; }
                     }
                 }
             }

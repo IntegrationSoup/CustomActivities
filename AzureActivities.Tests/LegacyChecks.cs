@@ -18,6 +18,23 @@ namespace AzureActivities.Tests
         internal static int Server(string[] args) => PersistentRunnerServer.RunIfRequested(args, (operation, json) =>
         {
             File.WriteAllText(Environment.GetEnvironmentVariable("AZURE_LEGACY_CAPTURE"), json);
+            if (operation == "upload-blob" && (string)JObject.Parse(json)["FileName"] == "force-sdk-failure")
+            {
+                var transport = new FakeTransport();
+                transport.Enqueue(r => {}, 403, "<Error><Code>AuthorizationFailure</Code><Message>DO-NOT-ECHO-SIGNED-SECRET-PAYLOAD</Message></Error>");
+                Runner.Program.ContainerClientFactory = (connection, container, options) => { options.Transport = transport; return new Azure.Storage.Blobs.BlobContainerClient(connection, container, options); };
+                var handler = (PersistentRunnerRequestHandler)Delegate.CreateDelegate(typeof(PersistentRunnerRequestHandler), typeof(Runner.Program).GetMethod("HandleServerRequest", BindingFlags.Static | BindingFlags.NonPublic));
+                return handler(operation, json);
+            }
+            if (operation == "download-blob" && (string)JObject.Parse(json)["FileName"] == "force-stream-failure")
+            {
+                var transport = new FakeTransport();
+                transport.Enqueue(r => {}, 200, null, 1);
+                for (int index = 0; index < 6; index++) transport.Enqueue(r => {}, 200, new InterruptedStream("DO-NOT-ECHO-CREDENTIAL-PAYLOAD"), 1);
+                Runner.BlobDownloadOperation.ContainerClientFactory = (connection, container, options) => { options.Transport = transport; return new Azure.Storage.Blobs.BlobContainerClient(connection, container, options); };
+                var handler = (PersistentRunnerRequestHandler)Delegate.CreateDelegate(typeof(PersistentRunnerRequestHandler), typeof(Runner.Program).GetMethod("HandleServerRequest", BindingFlags.Static | BindingFlags.NonPublic));
+                return handler(operation, json);
+            }
             if (operation == "download-blob") return new JObject { ["Base64"] = Convert.ToBase64String(Encoding.UTF8.GetBytes("MSH|caf\u00e9\r")), ["MetadataJson"] = "{\"size\":10}" }.ToString();
             if (operation == "upload-blob") return "{\"Message\":\"Code Executed Successfully\",\"BlobPath\":\"inbox/a\",\"ETag\":\"etag\",\"VersionId\":\"version\"}";
             throw new InvalidOperationException("Unexpected legacy operation.");
@@ -54,7 +71,17 @@ namespace AzureActivities.Tests
             try { Invoke(assembly.GetType("AzureActivities.BlobSender", true), parameters, variables, "not base64!", true, false); }
             catch (TargetInvocationException exception) when (exception.InnerException is FormatException) { failed = true; }
             Require(failed && File.ReadAllText(capture) == before, "invalid binary input rejected before dispatch");
-            Console.WriteLine("PASS 8 genuine-v4 DLL/API/named-pipe checks; synthetic runner, no cloud network.");
+            parameters["Connection String"] = "BlobEndpoint=https://fixture.blob.core.windows.net/;SharedAccessSignature=sv=2021-12-02&sr=c&sp=w&sig=DO-NOT-ECHO-CREDENTIAL";
+            parameters["File Name"] = "force-sdk-failure"; parameters["Create Container If Missing"] = "False"; parameters["New Container Access"] = "Private";
+            string error = null;
+            try { Invoke(assembly.GetType("AzureActivities.BlobSender", true), parameters, variables, "body", false, false); }
+            catch (TargetInvocationException exception) { error = exception.InnerException.Message; }
+            Require(error != null && error.Contains("403") && !error.Contains("DO-NOT-ECHO") && !error.Contains("sig="), "actual v4 SDK handler sanitizes response body and credentials");
+            parameters["File Name"] = "force-stream-failure"; error = null;
+            try { Invoke(assembly.GetType("AzureActivities.BlobDownload", true), parameters, variables, null, false, false); }
+            catch (TargetInvocationException exception) { error = exception.InnerException.Message; }
+            Require(error != null && error.Contains("interrupted body reads") && !error.Contains("DO-NOT-ECHO") && !error.Contains("sig="), "actual v4 body-retry failure is sanitized");
+            Console.WriteLine("PASS 10 genuine-v4 DLL/API/named-pipe checks; synthetic runner, no cloud network.");
             return 0;
         }
         private static string Invoke(Type type, Dictionary<string, string> parameters, Dictionary<string, string> variables, string input, bool binaryInput, bool binaryOutput)
