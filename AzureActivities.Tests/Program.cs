@@ -25,8 +25,10 @@ namespace AzureActivities.Tests
         {
             try
             {
+#if NETFRAMEWORK
                 if (args.Length > 0 && args[0] == "--server") return LegacyChecks.Server(args);
                 if (args.Length > 0 && args[0] == "--legacy") return LegacyChecks.Run(args[1], args[2]);
+#endif
                 transport = new FakeTransport();
                 Func<string, string, BlobClientOptions, BlobContainerClient> factory = (connection, container, options) =>
                 {

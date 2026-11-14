@@ -1,13 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFrameworks>net48;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <PlatformTarget>x64</PlatformTarget>
     <StartupObject>AzureActivities.Tests.Checks</StartupObject>
     <BridgeAdapterSource>$(MSBuildProjectDirectory)/../AzureActivities/AzureActivities</BridgeAdapterSource>
   </PropertyGroup>
   <ItemGroup>
+    <!-- The legacy checks use .NET Framework remoting, so they are part of the net48 run only. -->
+    <Compile Remove="LegacyChecks.cs" Condition="'$(TargetFramework)' != 'net48'" />
     <Compile Include="../ExtensionRunnerHosting/*.cs" />
     <Compile Include="../AzureActivities.Runner/*.cs" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.14.0" />

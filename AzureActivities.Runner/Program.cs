@@ -13,6 +13,12 @@ namespace AzureActivities.Runner
         internal static Func<string, string, BlobClientOptions, BlobContainerClient> ContainerClientFactory { get; set; }
         private static readonly Dictionary<string, BlobContainerClient> containerClientCache = new Dictionary<string, BlobContainerClient>(StringComparer.Ordinal);
 
+#if !NETFRAMEWORK
+        // .NET Framework knows the Windows code pages by itself. Later .NET has to be told once,
+        // or a Text Encoding such as windows-1252 is refused.
+        static Program() { System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance); }
+#endif
+
         private static int Main(string[] args)
         {
             BlobUploadResponse response = null;
