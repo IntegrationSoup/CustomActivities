@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFrameworks>net48;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <AssemblyName>ZipActivitiesRunner</AssemblyName>
     <RootNamespace>ZipActivities.Runner</RootNamespace>
@@ -11,8 +11,8 @@
 
   <ItemGroup>
     <Compile Include="..\ExtensionRunnerHosting\*.cs" Link="ExtensionRunnerHosting\%(Filename)%(Extension)" />
-    <Reference Include="System.IO.Compression" />
-    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.IO.Compression" Condition="'$(TargetFramework)' == 'net48'" />
+    <Reference Include="System.IO.Compression.FileSystem" Condition="'$(TargetFramework)' == 'net48'" />
   </ItemGroup>
 
   <PropertyGroup><BridgeAdapterSource>$(MSBuildProjectDirectory)/../ZipActivities</BridgeAdapterSource></PropertyGroup>

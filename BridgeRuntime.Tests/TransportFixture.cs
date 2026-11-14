@@ -17,7 +17,15 @@ internal static class TransportFixture
     private const int Limit = 65536;
     internal static void Run()
     {
-        string name = "bridge-transport-fixture-" + Guid.NewGuid().ToString("N");
+        if (OperatingSystem.IsWindows()) { Run("bridge-transport-fixture-" + Guid.NewGuid().ToString("N")); return; }
+        // A Unix host passes the full path of a socket in a directory that only its own user can open.
+        string directory = Directory.CreateTempSubdirectory("bridge-").FullName;
+        try { Run(Path.Combine(directory, "pipe")); }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    private static void Run(string name)
+    {
         using (Process child = Start("--server", "--pipe-name", name, "--parent-pid", Environment.ProcessId.ToString(), "--bridge-version", "1"))
         {
             try
@@ -25,6 +33,16 @@ internal static class TransportFixture
                 using (var malformed = Connect(name)) { malformed.Write(new byte[4]); malformed.Flush(); }
                 var described = Pipe(name, Envelope("extension.describe", new ExtensionDescribeRequest { ProviderId = "fixture" }));
                 Check(described.Success, "runner survives invalid frame");
+                // A Unix pipe is a socket that goes away with its last listener, and a caller that is
+                // already waiting on it is then cut off. Callers that arrive together must all be answered.
+                if (!OperatingSystem.IsWindows())
+                {
+                    var callers = new Task<ExtensionResponseEnvelope>[32];
+                    for (int i = 0; i < callers.Length; i++)
+                        callers[i] = Task.Run(() => Pipe(name, Envelope("extension.describe", new ExtensionDescribeRequest { ProviderId = "fixture" })));
+                    foreach (Task<ExtensionResponseEnvelope> caller in callers)
+                        Check(caller.WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult().Success, "a waiting caller keeps its listener");
+                }
                 string type = PersistentRunnerJson.Deserialize<ExtensionDescribeResult>(described.PayloadJson).Extensions[0].TypeName;
                 var request = new ExtensionInvokeRequest { ProviderId = "fixture", TypeName = type, Kind = "Activity", Phase = "Prepare", SessionId = "fixture-session", DeadlineUtc = DateTime.UtcNow.AddSeconds(15).ToString("O"), ResponseMessage = new ExtensionMessage { MessageType = 13, Text = "" } };
                 Check(Pipe(name, Envelope("extension.invoke", request)).Success, "pipe Prepare");
@@ -115,7 +133,15 @@ internal static class TransportFixture
         BridgeWire.WriteFrame(pipe, Encoding.UTF8.GetBytes(PersistentRunnerJson.Serialize(request)), Limit);
         return PersistentRunnerJson.Deserialize<ExtensionResponseEnvelope>(Encoding.UTF8.GetString(BridgeWire.ReadFrame(pipe, Limit)));
     }
-    private static Process Start(params string[] args) { var info = new ProcessStartInfo(Environment.ProcessPath) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true }; foreach (string arg in args) info.ArgumentList.Add(arg); return Process.Start(info); }
+    private static Process Start(params string[] args)
+    {
+        var info = new ProcessStartInfo(Environment.ProcessPath) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
+        // Started as "dotnet Fixture.dll", the child needs the fixture's own path first.
+        if (string.Equals(Path.GetFileNameWithoutExtension(Environment.ProcessPath), "dotnet", StringComparison.OrdinalIgnoreCase))
+            info.ArgumentList.Add(System.Reflection.Assembly.GetEntryAssembly().Location);
+        foreach (string arg in args) info.ArgumentList.Add(arg);
+        return Process.Start(info);
+    }
     private static void Stop(Process process) { if (!process.HasExited) { process.Kill(); process.WaitForExit(5000); } }
     private static void Check(bool condition, string name) { if (!condition) throw new Exception(name); }
 }

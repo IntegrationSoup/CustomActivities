@@ -45,6 +45,24 @@ shipping executable does not expose an HTTP listener. Deploying that seam behind
 HTTP requires administrator-owned HTTPS/authentication before dispatch; the
 loopback test host is only a synthetic test fixture, not a deployable server.
 
+## Linux hosts
+
+Seven runners also build for net10.0 so that a Linux host can start them as
+`dotnet <Runner>.dll` with the same bridge arguments: ZIP, Encryption, HL7 Value
+Transformers, Validate HL7, AWS, Azure and Data from PDF. The MSIs still package
+the net48 output, and net10.0-windows for Validate. SFTP, HTML to PDF and RTF to
+PDF remain Windows only.
+
+On Unix a named pipe is a socket file, and `BridgeRunner.cs` differs there in
+three ways. `--pipe-name` may be the full path of a socket in a directory that
+the host created for its own user. Unix has no pipe ACLs, so the socket is opened
+with `PipeOptions.CurrentUserOnly`; a caller that is another user is refused and
+the runner carries on. A socket goes away with its last listener, so one listener
+for each pipe is held open while the runner lives, the control pipe first.
+Framing, bounded frame I/O, the `.control` bypass and parent monitoring are the
+same on both. `dotnet run --project BridgeTransport.Tests -c Release` runs the
+transport fixtures on either system.
+
 ## Building review artifacts
 
 With the canonical API already built, run from PowerShell:

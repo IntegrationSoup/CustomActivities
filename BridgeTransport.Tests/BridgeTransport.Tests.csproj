@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- The same fixtures run on Windows and, against the runners' net10.0 form, on Linux. -->
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <StartupObject>RuntimeTests</StartupObject>
     <!-- Transport tests do not source-link any product activity adapters. -->
