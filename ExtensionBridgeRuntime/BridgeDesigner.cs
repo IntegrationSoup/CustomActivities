@@ -39,6 +39,22 @@ namespace Popokey.ExtensionRunners
             bool change = request.EventType == "FieldChanged" && descriptor.Parameters.Any(p => p.Name == request.ControlName);
             bool initialize = request.EventType == "Initialize" && string.IsNullOrEmpty(request.ControlName);
             if (!action && (!(change || initialize) || !descriptor.Designer.FieldChanges)) throw BridgeFault.Invalid("Unsupported designer event.");
+            var upload = action ? descriptor.Designer.Actions.Single(a => a.Id == request.ControlName).FileUpload : null;
+            if (upload != null)
+            {
+                var file = request.File;
+                if (upload.MaxBytes <= 0 || upload.MaxBytes > ExtensionBridgeProtocol.MaximumDesignerFileBytes ||
+                    file == null || string.IsNullOrWhiteSpace(file.Name) || file.Name.Length > 256 ||
+                    file.Name.Any(c => c < 32 || "\\/:".Contains(c)) || (file.ContentType?.Length ?? 0) > 128 ||
+                    !upload.AllowedExtensions.Any(extension => file.Name.EndsWith(extension, StringComparison.OrdinalIgnoreCase)) ||
+                    string.IsNullOrEmpty(file.Base64) || file.Base64.Length > ((upload.MaxBytes + 2) / 3) * 4)
+                    throw BridgeFault.Invalid("A supported sample file within the declared size limit is required.");
+                byte[] bytes;
+                try { bytes = Convert.FromBase64String(file.Base64); }
+                catch (FormatException) { throw BridgeFault.Invalid("The sample file is not valid base64."); }
+                if (bytes.Length == 0 || bytes.Length > upload.MaxBytes) throw BridgeFault.Invalid("The sample file exceeds its size limit or is empty.");
+            }
+            else if (request.File != null) throw BridgeFault.Invalid("This designer action does not accept a file.");
             DateTimeOffset deadline;
             if (!DateTimeOffset.TryParse(request.DeadlineUtc, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out deadline))
                 throw BridgeFault.Invalid("A designer deadline is required.");
@@ -54,6 +70,10 @@ namespace Popokey.ExtensionRunners
                 {
                     var result = CreateDesigner(types[descriptor.TypeName]).Update(request, cancellation.Token) ?? new ExtensionDesignerResult();
                     if (cancellation.IsCancellationRequested || DateTimeOffset.UtcNow >= deadline) throw new BridgeFault("DeadlineExceeded", "Unknown", "The designer result arrived too late.");
+                    if (result.ResponseTemplate != null && (!descriptor.Designer.ResponseTemplateUpdates ||
+                        descriptor.OutMessage?.UserCanEditTemplate != true || result.ResponseTemplate.Text == null ||
+                        result.ResponseTemplate.Text.Length > 1024 * 1024))
+                        throw BridgeFault.Invalid("The designer cannot update this response sample.");
                     result.Revision = request.Revision;
                     return result;
                 }

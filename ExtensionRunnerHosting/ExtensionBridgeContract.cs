@@ -17,6 +17,8 @@ namespace HL7Soup.Integrations.ExtensionBridge
         public const int DefaultMaxMessageBytes = 64 * 1024 * 1024;
         public const int MaximumMessageBytes = 256 * 1024 * 1024;
         public const int MaximumDescribeBytes = 4 * 1024 * 1024;
+        public const int MaximumDesignerFileBytes = 4 * 1024 * 1024;
+        public const int MaximumDesignerMessageBytes = 8 * 1024 * 1024;
         public const string MessageContextCapability = "message-context-v1";
         public const string WorkflowResponseCapability = "workflow-response-v1";
     }
@@ -128,12 +130,25 @@ namespace HL7Soup.Integrations.ExtensionBridge
 public sealed class ExtensionDesignerCapabilities
     {
         public bool FieldChanges { get; set; }
+        public bool ResponseTemplateUpdates { get; set; }
         public List<ExtensionDesignerAction> Actions { get; set; } = new List<ExtensionDesignerAction>();
     }
     public sealed class ExtensionDesignerAction
     {
         public string Id { get; set; }
         public string Label { get; set; }
+        public ExtensionDesignerFileUpload FileUpload { get; set; }
+    }
+    public sealed class ExtensionDesignerFileUpload
+    {
+        public List<string> AllowedExtensions { get; set; } = new List<string>();
+        public int MaxBytes { get; set; }
+    }
+    public sealed class ExtensionDesignerFile
+    {
+        public string Name { get; set; }
+        public string ContentType { get; set; }
+        public string Base64 { get; set; }
     }
     public sealed class ExtensionDesignerRequest
     {
@@ -147,12 +162,16 @@ public sealed class ExtensionDesignerCapabilities
         public long Revision { get; set; }
         public string DeadlineUtc { get; set; }
         public List<ExtensionNamedValue> Parameters { get; set; } = new List<ExtensionNamedValue>();
+        // Transient designer input; never a saved workflow parameter or server path.
+        public ExtensionDesignerFile File { get; set; }
     }
     public sealed class ExtensionDesignerResult
     {
         public int SchemaVersion { get; set; } = 1;
         public long Revision { get; set; }
         public List<ExtensionDesignerFieldUpdate> Fields { get; set; } = new List<ExtensionDesignerFieldUpdate>();
+        // Null preserves the current sample. Only opted-in editable outputs allow this.
+        public ExtensionMessage ResponseTemplate { get; set; }
     }
     public sealed class ExtensionDesignerFieldUpdate
     {

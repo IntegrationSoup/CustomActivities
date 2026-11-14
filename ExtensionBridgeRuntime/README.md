@@ -130,8 +130,32 @@ or additional buttons to configure or run these activities.
 Output samples are read-only unless the runner-only
 `EditableResponseTemplateAttribute` opts in. Data from PDF opts in to an editable
 JSON design sample; its binary input and actual extracted JSON are unchanged.
-Run a representative PDF and copy its response from the logs into that sample
-to expose downstream fields without adding a Code activity just for a sample.
+Data from PDF declares an **Upload sample PDF** action. The browser accepts one
+PDF up to 4 MiB, sends its bytes as transient base64 to the authenticated designer
+callback, and the runner uses the same extractor as normal activity execution.
+The returned JSON replaces the editable response sample and its message type as
+one undoable draft edit. Its fields immediately become available to later bindings.
+Users can also paste or edit JSON directly, without first running a workflow.
+
+The optional `ResponseTemplateUpdates` capability requires an editable output.
+An action's optional `FileUpload` declares allowed filename extensions and a
+positive byte limit (at most `MaximumDesignerFileBytes`). Only that action may
+receive `ExtensionDesignerRequest.File`; file inputs are never stored as workflow
+parameters or resolved as server paths. `ExtensionDesignerResult.ResponseTemplate`
+is optional and contains the sample's message type and text. Null preserves the
+existing sample. The host validates opt-in, size, output type and JSON before the
+browser applies the reply. Selection, draft/session or revision changes discard
+late replies. The host stops waiting after the callback's deadline (up to 30 seconds)
+and never automatically replays it. Extraction checks cancellation between pages
+and major stages; a synchronous PDF parser call already in progress may finish
+later and retains the runner's business lock until it returns.
+
+The version 4 DLL has no upload/designer attributes or callbacks. The same package
+contains its legacy DLL/runner plus the version 5 provider. Install the updated
+package on v4 once; upgrading the host to v5 later exposes its designer features
+without another extension installation. Older packages lacking the upload action
+need the updated package to obtain it. PDFs containing only scanned images still
+require OCR elsewhere; this activity preserves the existing extraction behavior.
 
 For a signed distribution use `InstallerTools/BuildBridgeSignedRelease.ps1` with
 a new installer version. It signs the v4 adapter, v5 runner, manifest helper and
