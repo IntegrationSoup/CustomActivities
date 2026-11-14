@@ -14,6 +14,7 @@ namespace DataFromPdfActivities
     [OutMessage("{}", TypeOfMessages.UserDefined, TypeOfMessages.JSON)]
 #if EXTENSION_BRIDGE_RUNNER
     [EditableResponseTemplate]
+    [ExtensionDesigner(typeof(DataFromPdfActivities.Runner.PdfSampleDesigner))]
 #endif
     public class DataFromPdfActivity : CustomActivity
     {

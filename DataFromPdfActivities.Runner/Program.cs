@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 
@@ -108,8 +109,9 @@ namespace DataFromPdfActivities.Runner
             @"(?<label>[A-Za-z][A-Za-z0-9 /&().,#'""-]{0,60}?):",
             RegexOptions.Compiled);
 
-        internal static string Extract(byte[] pdfBytes)
+        internal static string Extract(byte[] pdfBytes, CancellationToken cancellation = default(CancellationToken))
         {
+            cancellation.ThrowIfCancellationRequested();
             if (pdfBytes == null || pdfBytes.Length == 0)
             {
                 throw new InvalidOperationException("The PDF payload was empty.");
@@ -122,9 +124,12 @@ namespace DataFromPdfActivities.Runner
             {
                 foreach (Page page in document.GetPages())
                 {
+                    cancellation.ThrowIfCancellationRequested();
                     pages.Add(ExtractPage(page));
                 }
             }
+
+            cancellation.ThrowIfCancellationRequested();
 
             if (pages.Count == 0)
             {
@@ -137,6 +142,7 @@ namespace DataFromPdfActivities.Runner
             }
 
             Dictionary<string, string> fields = ExtractFields(pages);
+            cancellation.ThrowIfCancellationRequested();
             return PdfJsonWriter.Write(pages, fields, warnings);
         }
 
