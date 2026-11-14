@@ -150,8 +150,9 @@ namespace Popokey.ExtensionRunners
                     var call = new ActiveCall { RequestId = requestId, SessionId = request.SessionId, Cancellation = cancellation };
                     lock (controlGate) active = call;
                     // The timer can fire a fraction of a millisecond before the deadline on the clock.
-                    // It records that the deadline ended the call, so the fault does not read "Cancelled".
-                    using (var timer = new Timer(_ => { lock (controlGate) { if (active == call) { call.DeadlineReached = true; cancellation.Cancel(); } } }, null,
+                    // When it is the timer that ends the call, it records that, so the fault does not read
+                    // "Cancelled". A call that a cancel ended first is judged by the clock, as before.
+                    using (var timer = new Timer(_ => { lock (controlGate) { if (active == call) { if (!cancellation.IsCancellationRequested) call.DeadlineReached = true; cancellation.Cancel(); } } }, null,
                         (int)Math.Min(int.MaxValue, Math.Max(1, (deadline - DateTimeOffset.UtcNow).TotalMilliseconds)), Timeout.Infinite))
                     {
                         try

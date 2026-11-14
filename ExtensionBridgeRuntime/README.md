@@ -68,6 +68,12 @@ password, or the fixtures run as root, that part is skipped and says so;
 `BRIDGE_FIXTURE_OTHER_USER=required` makes the skip a failure, and the pull
 request check sets it.
 
+The same program first checks, without a pipe, what an ended call reports:
+`DeadlineExceeded` when its deadline ended it, `Cancelled` when a cancel did and
+the deadline is far off, and `DeadlineExceeded` when a cancel came first and the
+call was still unwinding as its deadline passed. Its probe stops the moment it is
+cancelled, so the answer does not depend on how fast a call unwinds.
+
 ## Building review artifacts
 
 With the canonical API already built, run from PowerShell:

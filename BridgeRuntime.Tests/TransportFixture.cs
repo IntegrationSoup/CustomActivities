@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
@@ -8,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using HL7Soup.Integrations;
 using HL7Soup.Integrations.ExtensionBridge;
 using Popokey.ExtensionRunners;
 
@@ -17,6 +19,7 @@ internal static class TransportFixture
     private const int Limit = 65536;
     internal static void Run()
     {
+        DeadlineAndCancel();
         if (OperatingSystem.IsWindows()) { Run("bridge-transport-fixture-" + Guid.NewGuid().ToString("N")); return; }
         // A Unix host passes the full path of a socket in a directory that only its own user can open.
         string directory = Directory.CreateTempSubdirectory("bridge-").FullName;
@@ -75,6 +78,64 @@ internal static class TransportFixture
         }
         TestHttp().GetAwaiter().GetResult();
         Console.WriteLine("Transport fixtures PASS: real .control cancellation, malformed-frame recovery, parent death during I/O, loopback HTTP auth rejection and identical JSON dispatch.");
+    }
+
+    // What an ended call reports must not depend on how fast it unwinds. The probe stops the moment
+    // its call is cancelled, which is when the clock is closest to the deadline. No pipe is involved.
+    private static void DeadlineAndCancel()
+    {
+        var provider = new BridgeProvider("fixture", "Fixture", (operation, payload) => throw new NotSupportedException(), typeof(StopsWhenCancelled));
+        var described = provider.Dispatch(Envelope("extension.describe", new ExtensionDescribeRequest { ProviderId = "fixture" }));
+        string type = PersistentRunnerJson.Deserialize<ExtensionDescribeResult>(described.PayloadJson).Extensions[0].TypeName;
+        // The deadline ends the call. A timer cuts the fraction of a millisecond off its wait.
+        for (int i = 0, ended = 0; ended < 40; i++)
+        {
+            Check(i < 80, "calls begin before their deadline");
+            ExtensionFailure late = Ended(provider, type, "deadline-" + i, TimeSpan.FromMilliseconds(150.9), false, 0);
+            // A machine that stalled past the deadline before the call began has shown nothing.
+            if (late.ExecutionState == "NotStarted") continue;
+            Check(late.Code == "DeadlineExceeded" && late.ExecutionState == "Unknown", "a call ended by its deadline reports DeadlineExceeded, not " + late.Code);
+            ended++;
+        }
+        // A cancel ends the call long before its deadline.
+        ExtensionFailure cancelled = Ended(provider, type, "cancel", TimeSpan.FromSeconds(20), true, 0);
+        Check(cancelled.Code == "Cancelled" && cancelled.ExecutionState == "Unknown", "a cancelled call reports Cancelled, not " + cancelled.Code);
+        // A cancel comes first, and the call is still unwinding when its deadline passes.
+        ExtensionFailure both = Ended(provider, type, "both", TimeSpan.FromSeconds(1), true, 1600);
+        Check(both.Code == "DeadlineExceeded" && both.ExecutionState == "Unknown", "a call that outlives its deadline reports DeadlineExceeded, not " + both.Code);
+        Console.WriteLine("Deadline and cancel fixture PASS: 40 calls ended by their deadline, one by a cancel, one by a cancel and then its deadline.");
+    }
+
+    private static ExtensionFailure Ended(BridgeProvider provider, string type, string session, TimeSpan deadline, bool cancel, int unwindMilliseconds)
+    {
+        var request = new ExtensionInvokeRequest { ProviderId = "fixture", TypeName = type, Kind = "Activity", Phase = "Prepare", SessionId = session, DeadlineUtc = DateTime.UtcNow.AddSeconds(15).ToString("O"), ResponseMessage = new ExtensionMessage { MessageType = 13, Text = "" } };
+        Check(provider.Dispatch(Envelope("extension.invoke", request)).Success, "in-process Prepare");
+        request.Phase = "Process";
+        StopsWhenCancelled.Started.Reset();
+        StopsWhenCancelled.UnwindMilliseconds = unwindMilliseconds;
+        request.DeadlineUtc = DateTime.UtcNow.Add(deadline).ToString("O");
+        var work = Envelope("extension.invoke", request);
+        Task<ExtensionResponseEnvelope> pending = Task.Run(() => provider.Dispatch(work));
+        if (cancel)
+        {
+            Check(StopsWhenCancelled.Started.Wait(5000), "the probe started");
+            Check(provider.Dispatch(Envelope("extension.cancel", new ExtensionCancelRequest { ProviderId = "fixture", TargetRequestId = work.RequestId, SessionId = session }), true).Success, "cancel acknowledged");
+        }
+        return PersistentRunnerJson.Deserialize<ExtensionFailure>(pending.WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult().PayloadJson);
+    }
+
+    public sealed class StopsWhenCancelled : CustomActivity
+    {
+        internal static readonly ManualResetEventSlim Started = new ManualResetEventSlim();
+        internal static int UnwindMilliseconds;
+        public override void Process(IWorkflowInstance workflow, IActivityInstance activity, Dictionary<string, string> parameters)
+        {
+            CancellationToken ended = SourceAdapterDispatch.Cancellation;
+            Started.Set();
+            ended.WaitHandle.WaitOne();
+            Thread.Sleep(UnwindMilliseconds);
+            throw new OperationCanceledException(ended);
+        }
     }
 
     // On Unix a caller that is another user is refused when it connects, and the runner must go on
