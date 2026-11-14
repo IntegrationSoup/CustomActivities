@@ -29,6 +29,8 @@ namespace Popokey.ExtensionRunners
         private readonly object controlGate = new object();
         private ActiveCall active;
         private readonly PersistentRunnerRequestHandler legacy;
+        // The clock that every deadline of a call is judged by. A fixture holds it still.
+        internal Func<DateTimeOffset> Clock = () => DateTimeOffset.UtcNow;
 
         internal BridgeProvider(string id, string assemblyName, PersistentRunnerRequestHandler handler, params Type[] extensionTypes)
         {
@@ -129,7 +131,7 @@ namespace Popokey.ExtensionRunners
             using (var context = new SourceAdapterContext(request))
             lock (businessGate)
             {
-                if (deadline <= DateTimeOffset.UtcNow) throw new BridgeFault("DeadlineExceeded", "NotStarted", "Deadline elapsed before execution.");
+                if (deadline <= Clock()) throw new BridgeFault("DeadlineExceeded", "NotStarted", "Deadline elapsed before execution.");
                 if (dispatched.Contains(requestId)) throw BridgeFault.Invalid("A dispatched request cannot be replayed.");
                 if (dispatched.Count >= 100000) throw new BridgeFault("Unavailable", "NotStarted", "Runner request capacity reached; start a new generation.");
                 Session session = null;
@@ -153,7 +155,7 @@ namespace Popokey.ExtensionRunners
                     // When it is the timer that ends the call, it records that, so the fault does not read
                     // "Cancelled". A call that a cancel ended first is judged by the clock, as before.
                     using (var timer = new Timer(_ => { lock (controlGate) { if (active == call) { if (!cancellation.IsCancellationRequested) call.DeadlineReached = true; cancellation.Cancel(); } } }, null,
-                        (int)Math.Min(int.MaxValue, Math.Max(1, (deadline - DateTimeOffset.UtcNow).TotalMilliseconds)), Timeout.Infinite))
+                        (int)Math.Min(int.MaxValue, Math.Max(1, (deadline - Clock()).TotalMilliseconds)), Timeout.Infinite))
                     {
                         try
                         {
@@ -171,10 +173,10 @@ namespace Popokey.ExtensionRunners
                                     case "Close": session.Activity.Close(); sessions.Remove(request.SessionId); break;
                                 }
                             }
-                            if (cancellation.IsCancellationRequested || deadline <= DateTimeOffset.UtcNow)
+                            if (cancellation.IsCancellationRequested || deadline <= Clock())
                             {
                                 sessions.Remove(request.SessionId);
-                                throw new BridgeFault(call.DeadlineReached || deadline <= DateTimeOffset.UtcNow ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution may have occurred; the result was discarded and the session invalidated.");
+                                throw new BridgeFault(call.DeadlineReached || deadline <= Clock() ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution may have occurred; the result was discarded and the session invalidated.");
                             }
                             return context.Complete();
                         }
@@ -186,7 +188,7 @@ namespace Popokey.ExtensionRunners
                             if (session != null && request.Phase != "Close")
                                 try { session.Activity.Close(); } catch { }
                             if (exception is OperationCanceledException && cancellation.IsCancellationRequested)
-                                throw new BridgeFault(call.DeadlineReached || deadline <= DateTimeOffset.UtcNow ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution was cancelled; the session was invalidated and the activity will not be replayed.");
+                                throw new BridgeFault(call.DeadlineReached || deadline <= Clock() ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution was cancelled; the session was invalidated and the activity will not be replayed.");
                             throw;
                         }
                         finally { SourceAdapterDispatch.Handler = null; SourceAdapterDispatch.Cancellation = default; lock (controlGate) active = null; }

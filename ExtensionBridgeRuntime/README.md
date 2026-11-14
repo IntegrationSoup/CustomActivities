@@ -72,7 +72,11 @@ The same program first checks, without a pipe, what an ended call reports:
 `DeadlineExceeded` when its deadline ended it, `Cancelled` when a cancel did and
 the deadline is far off, and `DeadlineExceeded` when a cancel came first and the
 call was still unwinding as its deadline passed. Its probe stops the moment it is
-cancelled, so the answer does not depend on how fast a call unwinds.
+cancelled, so the answer does not depend on how fast a call unwinds. The check
+runs twice. First the provider's clock, `BridgeProvider.Clock`, is held still, so
+the clock never reaches a deadline and only the timer can say that it ended a
+call: a provider that asks the clock alone then answers `Cancelled` every time.
+Then it runs with the real clock.
 
 ## Building review artifacts
 

@@ -87,6 +87,31 @@ internal static class TransportFixture
         var provider = new BridgeProvider("fixture", "Fixture", (operation, payload) => throw new NotSupportedException(), typeof(StopsWhenCancelled));
         var described = provider.Dispatch(Envelope("extension.describe", new ExtensionDescribeRequest { ProviderId = "fixture" }));
         string type = PersistentRunnerJson.Deserialize<ExtensionDescribeResult>(described.PayloadJson).Extensions[0].TypeName;
+        // First with the provider's clock held still. The clock then never reaches a deadline, as when a
+        // timer fires early, so only the timer can say that the deadline ended a call.
+        long held = DateTimeOffset.UtcNow.UtcTicks;
+        provider.Clock = () => new DateTimeOffset(Volatile.Read(ref held), TimeSpan.Zero);
+        for (int i = 0; i < 3; i++)
+        {
+            ExtensionFailure early = Ended(provider, type, "held-deadline-" + i, TimeSpan.FromMilliseconds(150), false, 0);
+            Check(early.Code == "DeadlineExceeded" && early.ExecutionState == "Unknown", "a call its timer ended before the clock reached the deadline reports DeadlineExceeded, not " + early.Code);
+        }
+        // A cancel comes first and the timer fires while the call unwinds. The cancel ended the call.
+        for (int i = 0; ; i++)
+        {
+            Check(i < 5, "a cancel lands before the timer fires");
+            ExtensionFailure first = Ended(provider, type, "held-cancel-" + i, TimeSpan.FromMilliseconds(150), true, 600);
+            // A machine that stalled until the timer had fired before the cancel landed has shown nothing.
+            if (cancelLanded >= TimeSpan.FromMilliseconds(140)) continue;
+            Check(first.Code == "Cancelled" && first.ExecutionState == "Unknown", "a call a cancel ended before the clock reached the deadline reports Cancelled, not " + first.Code);
+            break;
+        }
+        // A cancel comes first with the clock already past the deadline. The clock decides.
+        ExtensionFailure outlived = Ended(provider, type, "held-both", TimeSpan.FromSeconds(20), true, 0,
+            () => Volatile.Write(ref held, Volatile.Read(ref held) + TimeSpan.FromSeconds(21).Ticks));
+        Check(outlived.Code == "DeadlineExceeded" && outlived.ExecutionState == "Unknown", "a cancelled call that outlived its deadline on the clock reports DeadlineExceeded, not " + outlived.Code);
+        // Then with the real clock.
+        provider.Clock = () => DateTimeOffset.UtcNow;
         // The deadline ends the call. A timer cuts the fraction of a millisecond off its wait.
         for (int i = 0, ended = 0; ended < 40; i++)
         {
@@ -103,23 +128,30 @@ internal static class TransportFixture
         // A cancel comes first, and the call is still unwinding when its deadline passes.
         ExtensionFailure both = Ended(provider, type, "both", TimeSpan.FromSeconds(1), true, 1600);
         Check(both.Code == "DeadlineExceeded" && both.ExecutionState == "Unknown", "a call that outlives its deadline reports DeadlineExceeded, not " + both.Code);
-        Console.WriteLine("Deadline and cancel fixture PASS: 40 calls ended by their deadline, one by a cancel, one by a cancel and then its deadline.");
+        Console.WriteLine("Deadline and cancel fixture PASS: with the clock held still, 3 calls ended by their timer, one by a cancel, one by a cancel past its deadline. With the real clock, 40 calls ended by their deadline, one by a cancel, one by a cancel and then its deadline.");
     }
 
-    private static ExtensionFailure Ended(BridgeProvider provider, string type, string session, TimeSpan deadline, bool cancel, int unwindMilliseconds)
+    // How long after a call was handed over its cancel was acknowledged.
+    private static TimeSpan cancelLanded;
+
+    // Deadlines are measured on the provider's clock. whenStarted runs once the probe is waiting, before the cancel.
+    private static ExtensionFailure Ended(BridgeProvider provider, string type, string session, TimeSpan deadline, bool cancel, int unwindMilliseconds, Action whenStarted = null)
     {
-        var request = new ExtensionInvokeRequest { ProviderId = "fixture", TypeName = type, Kind = "Activity", Phase = "Prepare", SessionId = session, DeadlineUtc = DateTime.UtcNow.AddSeconds(15).ToString("O"), ResponseMessage = new ExtensionMessage { MessageType = 13, Text = "" } };
+        var request = new ExtensionInvokeRequest { ProviderId = "fixture", TypeName = type, Kind = "Activity", Phase = "Prepare", SessionId = session, DeadlineUtc = provider.Clock().AddSeconds(15).UtcDateTime.ToString("O"), ResponseMessage = new ExtensionMessage { MessageType = 13, Text = "" } };
         Check(provider.Dispatch(Envelope("extension.invoke", request)).Success, "in-process Prepare");
         request.Phase = "Process";
         StopsWhenCancelled.Started.Reset();
         StopsWhenCancelled.UnwindMilliseconds = unwindMilliseconds;
-        request.DeadlineUtc = DateTime.UtcNow.Add(deadline).ToString("O");
+        request.DeadlineUtc = provider.Clock().Add(deadline).UtcDateTime.ToString("O");
         var work = Envelope("extension.invoke", request);
+        var handedOver = Stopwatch.StartNew();
         Task<ExtensionResponseEnvelope> pending = Task.Run(() => provider.Dispatch(work));
         if (cancel)
         {
             Check(StopsWhenCancelled.Started.Wait(5000), "the probe started");
+            if (whenStarted != null) whenStarted();
             Check(provider.Dispatch(Envelope("extension.cancel", new ExtensionCancelRequest { ProviderId = "fixture", TargetRequestId = work.RequestId, SessionId = session }), true).Success, "cancel acknowledged");
+            cancelLanded = handedOver.Elapsed;
         }
         return PersistentRunnerJson.Deserialize<ExtensionFailure>(pending.WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult().PayloadJson);
     }
