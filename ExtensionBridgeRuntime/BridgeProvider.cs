@@ -149,7 +149,9 @@ namespace Popokey.ExtensionRunners
                 {
                     var call = new ActiveCall { RequestId = requestId, SessionId = request.SessionId, Cancellation = cancellation };
                     lock (controlGate) active = call;
-                    using (var timer = new Timer(_ => { lock (controlGate) { if (active == call) cancellation.Cancel(); } }, null,
+                    // The timer can fire a fraction of a millisecond before the deadline on the clock.
+                    // It records that the deadline ended the call, so the fault does not read "Cancelled".
+                    using (var timer = new Timer(_ => { lock (controlGate) { if (active == call) { call.DeadlineReached = true; cancellation.Cancel(); } } }, null,
                         (int)Math.Min(int.MaxValue, Math.Max(1, (deadline - DateTimeOffset.UtcNow).TotalMilliseconds)), Timeout.Infinite))
                     {
                         try
@@ -171,7 +173,7 @@ namespace Popokey.ExtensionRunners
                             if (cancellation.IsCancellationRequested || deadline <= DateTimeOffset.UtcNow)
                             {
                                 sessions.Remove(request.SessionId);
-                                throw new BridgeFault(deadline <= DateTimeOffset.UtcNow ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution may have occurred; the result was discarded and the session invalidated.");
+                                throw new BridgeFault(call.DeadlineReached || deadline <= DateTimeOffset.UtcNow ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution may have occurred; the result was discarded and the session invalidated.");
                             }
                             return context.Complete();
                         }
@@ -183,7 +185,7 @@ namespace Popokey.ExtensionRunners
                             if (session != null && request.Phase != "Close")
                                 try { session.Activity.Close(); } catch { }
                             if (exception is OperationCanceledException && cancellation.IsCancellationRequested)
-                                throw new BridgeFault(deadline <= DateTimeOffset.UtcNow ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution was cancelled; the session was invalidated and the activity will not be replayed.");
+                                throw new BridgeFault(call.DeadlineReached || deadline <= DateTimeOffset.UtcNow ? "DeadlineExceeded" : "Cancelled", "Unknown", "Execution was cancelled; the session was invalidated and the activity will not be replayed.");
                             throw;
                         }
                         finally { SourceAdapterDispatch.Handler = null; SourceAdapterDispatch.Cancellation = default; lock (controlGate) active = null; }
@@ -262,6 +264,6 @@ namespace Popokey.ExtensionRunners
         }
 
         private sealed class Session { internal string TypeName; internal CustomActivity Activity; }
-        private sealed class ActiveCall { internal string RequestId; internal string SessionId; internal CancellationTokenSource Cancellation; }
+        private sealed class ActiveCall { internal string RequestId; internal string SessionId; internal CancellationTokenSource Cancellation; internal volatile bool DeadlineReached; }
     }
 }
