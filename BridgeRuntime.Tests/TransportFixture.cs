@@ -42,6 +42,7 @@ internal static class TransportFixture
                         callers[i] = Task.Run(() => Pipe(name, Envelope("extension.describe", new ExtensionDescribeRequest { ProviderId = "fixture" })));
                     foreach (Task<ExtensionResponseEnvelope> caller in callers)
                         Check(caller.WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult().Success, "a waiting caller keeps its listener");
+                    RefusedCaller(name, child);
                 }
                 string type = PersistentRunnerJson.Deserialize<ExtensionDescribeResult>(described.PayloadJson).Extensions[0].TypeName;
                 var request = new ExtensionInvokeRequest { ProviderId = "fixture", TypeName = type, Kind = "Activity", Phase = "Prepare", SessionId = "fixture-session", DeadlineUtc = DateTime.UtcNow.AddSeconds(15).ToString("O"), ResponseMessage = new ExtensionMessage { MessageType = 13, Text = "" } };
@@ -74,6 +75,80 @@ internal static class TransportFixture
         }
         TestHttp().GetAwaiter().GetResult();
         Console.WriteLine("Transport fixtures PASS: real .control cancellation, malformed-frame recovery, parent death during I/O, loopback HTTP auth rejection and identical JSON dispatch.");
+    }
+
+    // On Unix a caller that is another user is refused when it connects, and the runner must go on
+    // answering on both pipes. Another user means sudo here, so this part runs for an ordinary user
+    // whom sudo asks nothing. BRIDGE_FIXTURE_OTHER_USER=required turns a skip into a failure.
+    private static void RefusedCaller(string name, Process child)
+    {
+        if (Environment.IsPrivilegedProcess || Sudo("true") != 0)
+        {
+            Check(Environment.GetEnvironmentVariable("BRIDGE_FIXTURE_OTHER_USER") != "required", "another user needs an ordinary user who may use sudo without a password");
+            Console.WriteLine("Refused-caller fixture SKIPPED: it needs an ordinary user who may use sudo without a password.");
+            return;
+        }
+        var probe = new System.Collections.Generic.List<string>();
+        // sudo drops the environment; a runtime outside the default place is found through DOTNET_ROOT.
+        string root = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        if (!string.IsNullOrEmpty(root)) { probe.Add("env"); probe.Add("DOTNET_ROOT=" + root); }
+        probe.Add(Environment.ProcessPath);
+        if (string.Equals(Path.GetFileNameWithoutExtension(Environment.ProcessPath), "dotnet", StringComparison.OrdinalIgnoreCase))
+            probe.Add(System.Reflection.Assembly.GetEntryAssembly().Location);
+        probe.Add("--fixture-refused-probe");
+        foreach (string pipe in new[] { name, name + ".control" })
+        {
+            string label = Path.GetFileName(pipe);
+            probe.Add(pipe);
+            int exit = Sudo(probe.ToArray());
+            probe.RemoveAt(probe.Count - 1);
+            Check(exit == 0, "another user gets no answer on " + label + " (probe exit " + exit + ")");
+            Check(!child.HasExited, "runner survives refusing another user on " + label);
+            // The control pipe takes cancellations only; one that names nothing is still acknowledged.
+            var own = pipe == name ? Envelope("extension.describe", new ExtensionDescribeRequest { ProviderId = "fixture" })
+                : Envelope("extension.cancel", new ExtensionCancelRequest { ProviderId = "fixture", TargetRequestId = "none", SessionId = "none" });
+            Check(Pipe(pipe, own).Success, "runner still answers its own user on " + label);
+        }
+        Console.WriteLine("Refused-caller fixture PASS: another user got no answer on either pipe, and the runner went on answering its own user.");
+    }
+
+    // Started through sudo by RefusedCaller. 0: the runner gave this user no answer. 3: it answered. 4: the socket was not reached.
+    internal static int RefusedProbe(string path)
+    {
+        using (var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified) { ReceiveTimeout = 5000, SendTimeout = 5000 })
+        {
+            try { socket.Connect(new UnixDomainSocketEndPoint(path)); }
+            catch (SocketException) { return 4; }
+            try
+            {
+                using (var stream = new NetworkStream(socket))
+                {
+                    BridgeWire.WriteFrame(stream, Encoding.UTF8.GetBytes(PersistentRunnerJson.Serialize(Envelope("extension.describe", new ExtensionDescribeRequest { ProviderId = "fixture" }))), Limit);
+                    BridgeWire.ReadFrame(stream, Limit);
+                }
+                return 3;
+            }
+            catch (IOException) { return 0; }
+        }
+    }
+
+    // The exit code of "sudo -n <command>", or -1 when there is no sudo or it did not finish.
+    private static int Sudo(params string[] command)
+    {
+        var info = new ProcessStartInfo("sudo") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+        info.ArgumentList.Add("-n");
+        foreach (string part in command) info.ArgumentList.Add(part);
+        try
+        {
+            using (Process process = Process.Start(info))
+            {
+                process.StandardError.ReadToEndAsync();
+                if (process.WaitForExit(20000)) return process.ExitCode;
+                process.Kill();
+                return -1;
+            }
+        }
+        catch (System.ComponentModel.Win32Exception) { return -1; }
     }
 
     private static async Task TestHttp()

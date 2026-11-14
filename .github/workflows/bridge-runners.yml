@@ -51,6 +51,10 @@ jobs:
           }
 
       - name: Transport fixtures
+        # On Linux the fixtures also show that a caller who is another user is refused and that
+        # the runner carries on. That part reaches the other user through sudo, and here it must run.
+        env:
+          BRIDGE_FIXTURE_OTHER_USER: required
         run: dotnet run --project BridgeTransport.Tests/BridgeTransport.Tests.csproj -c Release
 
       - name: ZIP runner tests

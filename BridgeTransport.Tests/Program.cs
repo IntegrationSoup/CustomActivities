@@ -11,6 +11,7 @@ internal static class RuntimeTests
         try
         {
             if (args.Length > 0 && args[0] == "--fixture-parent") { Thread.Sleep(Timeout.Infinite); return 0; }
+            if (args.Length > 1 && args[0] == "--fixture-refused-probe") return TransportFixture.RefusedProbe(args[1]);
             if (args.Length > 0 && args[0] == "--server")
                 return BridgeRunner.RunIfRequested(args, (operation, payload) => throw new NotSupportedException(),
                     () => new BridgeProvider("fixture", "Fixture", (operation, payload) => throw new NotSupportedException(), typeof(Probe))) ?? 2;

@@ -61,7 +61,12 @@ the runner carries on. A socket goes away with its last listener, so one listene
 for each pipe is held open while the runner lives, the control pipe first.
 Framing, bounded frame I/O, the `.control` bypass and parent monitoring are the
 same on both. `dotnet run --project BridgeTransport.Tests -c Release` runs the
-transport fixtures on either system.
+transport fixtures on either system. On Unix they also connect as another user,
+through `sudo -n`, and check that this caller gets no answer on either pipe and
+that the runner goes on answering its own user. Where sudo would ask for a
+password, or the fixtures run as root, that part is skipped and says so;
+`BRIDGE_FIXTURE_OTHER_USER=required` makes the skip a failure, and the pull
+request check sets it.
 
 ## Building review artifacts
 
