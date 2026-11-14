@@ -33,7 +33,7 @@ Existing workflows that omit the new replacement option fail on duplicate blob n
 
 ## Verification
 
-Run `dotnet run --project AzureActivities.Tests -c Release`. The executable uses a synthetic Azure HTTP transport and the real SDK/bridge serializer. It tests exact identity, read-only SAS, ETag/version guards, empty/binary/DICOM/text content, explicit encoding and BOM behavior, oversized/incomplete streams, control-heavy serialized envelopes, failures, and default/explicit creation access for both new and existing containers. No real cloud data or customer workflows are read or modified.
+Run `dotnet run --project AzureActivities.Tests -c Release -f net48`, and `-f net10.0` for the runner a Linux host starts. The executable uses a synthetic Azure HTTP transport and the real SDK/bridge serializer. It tests exact identity, read-only SAS, ETag/version guards, empty/binary/DICOM/text content, explicit encoding and BOM behavior, oversized/incomplete streams, control-heavy serialized envelopes, failures, and default/explicit creation access for both new and existing containers. No real cloud data or customer workflows are read or modified.
 
 The suite also exercises slash-bearing version-qualified keys, SAS/shared-key request construction, cumulative body resumes, changed-object rejection, active read/request cancellation and response disposal. `dotnet run --project BridgeTransport.Tests -c Release` runs the shared bridge's real child-process/control-pipe, parent-lifetime and synthetic loopback HTTP fixtures independently of other activity adapters. Test projects require the .NET SDK; product installation requires only the runtimes documented above.
 

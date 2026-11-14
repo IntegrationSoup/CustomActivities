@@ -35,19 +35,49 @@ namespace Popokey.ExtensionRunners
             }
             if (version != 1 || parentPid <= 0 || limit <= 0 || limit > ExtensionBridgeProtocol.MaximumMessageBytes)
                 throw new ArgumentException("Invalid bridge version, parent or limit.");
-            if (string.IsNullOrWhiteSpace(pipeName) || pipeName.Length > 200 || pipeName.Any(c => !(char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.')))
+            if (string.IsNullOrWhiteSpace(pipeName) || pipeName.Length > 200 || (!IsUnixSocketPath(pipeName) && pipeName.Any(c => !(char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.'))))
                 throw new ArgumentException("A local pipe name without path components is required.");
             using (Process parent = Process.GetProcessById(parentPid))
             using (var monitor = new Timer(_ => { try { if (parent.HasExited) Environment.Exit(0); } catch { Environment.Exit(0); } }, null, 0, 500))
             {
                 BridgeProvider provider = createProvider();
-                var control = Task.Run(() => Listen(pipeName + ".control", provider, Math.Min(limit, ExtensionBridgeProtocol.MaximumDescribeBytes), true));
-                control.ContinueWith(_ => Environment.Exit(1), TaskContinuationOptions.OnlyOnFaulted);
-                Listen(pipeName, provider, limit, false);
-                return 0;
+                // On Unix a pipe is a socket that goes away with its last listener, and a caller that is
+                // already waiting on it is then cut off. One listener for each pipe is held open and never
+                // used, the control pipe first, so that both are there before the first caller is answered.
+                using (HoldOpen(pipeName + ".control"))
+                using (HoldOpen(pipeName))
+                {
+                    var control = Task.Run(() => Listen(pipeName + ".control", provider, Math.Min(limit, ExtensionBridgeProtocol.MaximumDescribeBytes), true));
+                    control.ContinueWith(_ => Environment.Exit(1), TaskContinuationOptions.OnlyOnFaulted);
+                    Listen(pipeName, provider, limit, false);
+                    return 0;
+                }
             }
         }
 
+        // A Unix host supplies the full path of a socket inside a private directory that it has just made.
+        private static bool IsUnixSocketPath(string pipeName)
+        {
+#if NETFRAMEWORK
+            return false;
+#else
+            return !OperatingSystem.IsWindows() && pipeName.IndexOf('\0') < 0 && Path.IsPathFullyQualified(pipeName)
+                && string.Equals(Path.GetFullPath(pipeName), pipeName, StringComparison.Ordinal) && Path.GetFileName(pipeName).Length > 0;
+#endif
+        }
+
+        private static NamedPipeServerStream HoldOpen(string pipeName)
+        {
+#if NETFRAMEWORK
+            return null;
+#else
+            return OperatingSystem.IsWindows() ? null : CreatePipe(pipeName);
+#endif
+        }
+
+#if !NETFRAMEWORK
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
         internal static PipeSecurity CreateSecurity()
         {
             var security = new PipeSecurity();
@@ -77,6 +107,10 @@ namespace Popokey.ExtensionRunners
                     catch (IOException) { }
                     catch (TimeoutException) { }
                     catch (AggregateException) { }
+#if !NETFRAMEWORK
+                    // On Unix a caller that is another user is refused when it connects. That must not end the runner.
+                    catch (UnauthorizedAccessException) when (!OperatingSystem.IsWindows()) { }
+#endif
                 }
             }
         }
@@ -86,6 +120,9 @@ namespace Popokey.ExtensionRunners
 #if NETFRAMEWORK
             return new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 4096, 4096, CreateSecurity());
 #else
+            // Unix has no pipe access rules. The pipe is a socket that only this user may use.
+            if (!OperatingSystem.IsWindows())
+                return new NamedPipeServerStream(pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly, 4096, 4096);
             return NamedPipeServerStreamAcl.Create(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 4096, 4096, CreateSecurity());
 #endif
         }

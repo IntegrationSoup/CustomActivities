@@ -1,0 +1,72 @@
+name: Bridge runners
+
+# Builds the extension runners and runs the checks that need nothing outside this
+# repository, on Windows and on Linux. It does not build the adapters, the MSIs or
+# the fixtures that need a host build: InstallerTools/BuildBridgeReview.ps1 does that.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bridge-runners-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runners:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build the runners
+        shell: pwsh
+        run: |
+          # Windows builds every runner for every framework it targets.
+          # Linux builds the seven that also target net10.0, in that form only.
+          $everywhere = 'ZipActivities.Runner', 'HL7SoupEncryptionActivities.Runner', 'HL7ValueTransformers.Runner',
+              'ValidateTransformer.Runner', 'AmazonActivities.Runner', 'AzureActivities.Runner', 'DataFromPdfActivities.Runner'
+          $windowsOnly = 'SftpActivities.Runner', 'HtmlToPdfActivities.Renderer', 'RtfToPdfActivities.Renderer'
+          if ($IsWindows) { $projects = $everywhere + $windowsOnly; $framework = @() }
+          else { $projects = $everywhere; $framework = @('-f', 'net10.0') }
+          foreach ($name in $projects) {
+              dotnet build "$name/$name.csproj" -c Release -m:1 @framework
+              if ($LASTEXITCODE -ne 0) { throw "Build failed: $name" }
+          }
+
+      - name: Transport fixtures
+        # On Linux the fixtures also show that a caller who is another user is refused and that
+        # the runner carries on. That part reaches the other user through sudo, and here it must run.
+        env:
+          BRIDGE_FIXTURE_OTHER_USER: required
+        run: dotnet run --project BridgeTransport.Tests/BridgeTransport.Tests.csproj -c Release
+
+      - name: ZIP runner tests
+        run: dotnet test ZipActivities.Runner.Tests/ZipActivities.Runner.Tests.csproj -c Release
+
+      - name: Azure runner checks
+        # The real Azure SDK over a synthetic HTTP transport: no network and no account.
+        # net10.0 is what a Linux host runs. net48 is what the MSI installs, and runs on Windows only.
+        shell: pwsh
+        run: |
+          $frameworks = if ($IsWindows) { 'net10.0', 'net48' } else { 'net10.0' }
+          foreach ($framework in $frameworks) {
+              dotnet run --project AzureActivities.Tests/AzureActivities.Tests.csproj -c Release -f $framework
+              if ($LASTEXITCODE -ne 0) { throw "Azure checks failed: $framework" }
+          }

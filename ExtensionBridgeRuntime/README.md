@@ -45,6 +45,39 @@ shipping executable does not expose an HTTP listener. Deploying that seam behind
 HTTP requires administrator-owned HTTPS/authentication before dispatch; the
 loopback test host is only a synthetic test fixture, not a deployable server.
 
+## Linux hosts
+
+Seven runners also build for net10.0 so that a Linux host can start them as
+`dotnet <Runner>.dll` with the same bridge arguments: ZIP, Encryption, HL7 Value
+Transformers, Validate HL7, AWS, Azure and Data from PDF. The MSIs still package
+the net48 output, and net10.0-windows for Validate. SFTP, HTML to PDF and RTF to
+PDF remain Windows only.
+
+On Unix a named pipe is a socket file, and `BridgeRunner.cs` differs there in
+three ways. `--pipe-name` may be the full path of a socket in a directory that
+the host created for its own user. Unix has no pipe ACLs, so the socket is opened
+with `PipeOptions.CurrentUserOnly`; a caller that is another user is refused and
+the runner carries on. A socket goes away with its last listener, so one listener
+for each pipe is held open while the runner lives, the control pipe first.
+Framing, bounded frame I/O, the `.control` bypass and parent monitoring are the
+same on both. `dotnet run --project BridgeTransport.Tests -c Release` runs the
+transport fixtures on either system. On Unix they also connect as another user,
+through `sudo -n`, and check that this caller gets no answer on either pipe and
+that the runner goes on answering its own user. Where sudo would ask for a
+password, or the fixtures run as root, that part is skipped and says so;
+`BRIDGE_FIXTURE_OTHER_USER=required` makes the skip a failure, and the pull
+request check sets it.
+
+The same program first checks, without a pipe, what an ended call reports:
+`DeadlineExceeded` when its deadline ended it, `Cancelled` when a cancel did and
+the deadline is far off, and `DeadlineExceeded` when a cancel came first and the
+call was still unwinding as its deadline passed. Its probe stops the moment it is
+cancelled, so the answer does not depend on how fast a call unwinds. The check
+runs twice. First the provider's clock, `BridgeProvider.Clock`, is held still, so
+the clock never reaches a deadline and only the timer can say that it ended a
+call: a provider that asks the clock alone then answers `Cancelled` every time.
+Then it runs with the real clock.
+
 ## Building review artifacts
 
 With the canonical API already built, run from PowerShell:
