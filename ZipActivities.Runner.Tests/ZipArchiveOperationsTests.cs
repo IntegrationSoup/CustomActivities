@@ -75,6 +75,77 @@ public sealed class ZipArchiveOperationsTests : IDisposable
         Assert.False(File.Exists(Path.Combine(testRoot, "outside.txt")));
     }
 
+    // Where "destination" and "DESTINATION" are two directories, the second is outside the first.
+    [Fact]
+    public void ExtractRejectsAnEntryInADirectoryThatDiffersOnlyInLetterCase()
+    {
+        string zipPath = Path.Combine(testRoot, "unsafe-case.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            ZipArchiveEntry entry = archive.CreateEntry("../DESTINATION/outside.txt");
+            using StreamWriter writer = new StreamWriter(entry.Open());
+            writer.Write("unsafe");
+        }
+
+        string destination = Path.Combine(testRoot, "destination");
+
+        if (OperatingSystem.IsWindows())
+        {
+            // Windows names one directory both ways, so the entry stays inside the destination.
+            ZipArchiveOperations.Extract(zipPath, destination, overwriteExistingFiles: true);
+            Assert.Equal("unsafe", File.ReadAllText(Path.Combine(destination, "outside.txt")));
+            return;
+        }
+
+        Assert.Throws<InvalidDataException>(() => ZipArchiveOperations.Extract(zipPath, destination, overwriteExistingFiles: true));
+        Assert.False(Directory.Exists(Path.Combine(testRoot, "DESTINATION")));
+    }
+
+    [Fact]
+    public void ExtractTreatsNamesThatDifferOnlyInLetterCaseAsTheFileSystemDoes()
+    {
+        string zipPath = Path.Combine(testRoot, "case.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            foreach (string name in new[] { "note.txt", "NOTE.txt" })
+            {
+                using StreamWriter writer = new StreamWriter(archive.CreateEntry(name).Open());
+                writer.Write(name);
+            }
+        }
+
+        string destination = Path.Combine(testRoot, "destination");
+
+        if (OperatingSystem.IsWindows())
+        {
+            // One file under two spellings cannot hold both entries.
+            Assert.Throws<InvalidDataException>(() => ZipArchiveOperations.Extract(zipPath, destination, overwriteExistingFiles: true));
+            return;
+        }
+
+        ZipOperationResult extracted = ZipArchiveOperations.Extract(zipPath, destination, overwriteExistingFiles: false);
+        Assert.Equal(2, extracted.FileCount);
+        Assert.Equal("note.txt", File.ReadAllText(Path.Combine(destination, "note.txt")));
+        Assert.Equal("NOTE.txt", File.ReadAllText(Path.Combine(destination, "NOTE.txt")));
+    }
+
+    [Fact]
+    public void CreateFileKeepsASourceFileWhoseNameDiffersFromTheArchiveOnlyInLetterCase()
+    {
+        // Windows cannot hold both files in one directory, and the test before this one covers the archive itself.
+        if (OperatingSystem.IsWindows()) return;
+
+        string source = CreateSourceTree();
+        File.WriteAllText(Path.Combine(source, "ARCHIVE.zip"), "not the archive");
+        string zipPath = Path.Combine(source, "archive.zip");
+
+        ZipArchiveOperations.CreateFile(source, zipPath, includeBaseDirectory: false, overwriteExistingFile: false);
+
+        using ZipArchive archive = ZipFile.OpenRead(zipPath);
+        Assert.Contains(archive.Entries, entry => entry.FullName == "ARCHIVE.zip");
+        Assert.DoesNotContain(archive.Entries, entry => entry.FullName == "archive.zip");
+    }
+
     [Fact]
     public void ExtractRequiresOverwriteBeforeReplacingAnExistingFile()
     {

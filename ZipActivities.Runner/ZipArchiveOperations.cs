@@ -7,6 +7,15 @@ namespace ZipActivities.Runner
 {
     internal static class ZipArchiveOperations
     {
+        // Windows names one file or directory in any letter case. Elsewhere "output" and "OUTPUT" are two.
+#if NETFRAMEWORK
+        private const bool IgnorePathCase = true;
+#else
+        private static readonly bool IgnorePathCase = OperatingSystem.IsWindows();
+#endif
+        private static readonly StringComparison PathComparison = IgnorePathCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        private static readonly StringComparer PathComparer = IgnorePathCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
         internal static ZipOperationResult CreateFile(string sourceDirectory, string zipFilePath, bool includeBaseDirectory, bool overwriteExistingFile)
         {
             string sourceRoot = ResolveSourceDirectory(sourceDirectory);
@@ -123,7 +132,7 @@ namespace ZipActivities.Runner
 
         private static ZipOperationResult CreateArchive(Stream output, string sourceRoot, bool includeBaseDirectory, params string[] excludedPaths)
         {
-            HashSet<string> exclusions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> exclusions = new HashSet<string>(PathComparer);
             foreach (string excludedPath in excludedPaths ?? Array.Empty<string>())
             {
                 if (!string.IsNullOrWhiteSpace(excludedPath))
@@ -205,7 +214,7 @@ namespace ZipActivities.Runner
             bool overwriteExistingFiles)
         {
             List<ExtractionTarget> targets = new List<ExtractionTarget>();
-            Dictionary<string, bool> plannedPaths = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, bool> plannedPaths = new Dictionary<string, bool>(PathComparer);
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
@@ -224,8 +233,8 @@ namespace ZipActivities.Runner
                     .Replace('/', Path.DirectorySeparatorChar)
                     .Replace('\\', Path.DirectorySeparatorChar);
                 string targetPath = Path.GetFullPath(Path.Combine(destinationRoot, relativePath));
-                if (!targetPath.Equals(destinationRoot, StringComparison.OrdinalIgnoreCase)
-                    && !targetPath.StartsWith(destinationPrefix, StringComparison.OrdinalIgnoreCase))
+                if (!targetPath.Equals(destinationRoot, PathComparison)
+                    && !targetPath.StartsWith(destinationPrefix, PathComparison))
                 {
                     throw new InvalidDataException($"ZIP entry '{entryName}' would be extracted outside the destination directory.");
                 }
