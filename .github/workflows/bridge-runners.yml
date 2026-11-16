@@ -68,6 +68,10 @@ jobs:
         # A failed Encrypt or Decrypt Message step says why, never with the key or the message.
         run: dotnet run --project HL7SoupEncryptionActivities.Bridge.Tests/HL7SoupEncryptionActivities.Bridge.Tests.csproj -c Release
 
+      - name: Validate bridge checks
+        # A failed Validate step says why, in the library's own words; the parser's text never passes.
+        run: dotnet run --project ValidateTransformer.Bridge.Tests/ValidateTransformer.Bridge.Tests.csproj -c Release
+
       - name: Azure runner checks
         # The real Azure SDK over a synthetic HTTP transport: no network and no account.
         # net10.0 is what a Linux host runs. net48 is what the MSI installs, and runs on Windows only.

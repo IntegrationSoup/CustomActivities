@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- The Validate runner's net10.0 form, which is what version 5's Linux image runs. The version 5 HL7 parser
+         itself is not loaded: a stand-in HL7 message gives the parser's answers, so no product build is needed. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <StartupObject>ValidateTransformer.Bridge.Tests.Checks</StartupObject>
+    <BridgeAdapterSource>$(MSBuildProjectDirectory)/../ValidateTransformer</BridgeAdapterSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ExtensionRunnerHosting/*.cs" />
+  </ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>

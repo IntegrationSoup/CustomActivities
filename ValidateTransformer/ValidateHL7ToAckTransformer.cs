@@ -28,7 +28,7 @@ namespace ValidateTransformer
                 IHL7Message responseMessage = activityInstance.ResponseMessage as IHL7Message;
                 if (responseMessage == null)
                 {
-                    throw new Exception("ValidateHL7ToAckTransformer requires an HL7 response message.");
+                    throw ValidationActivity.Failure("ValidateHL7ToAckTransformer requires an HL7 response message.");
                 }
 
                 ValidationOutcome outcome = ValidationActivity.Validate(hl7Message, profile);
