@@ -82,3 +82,7 @@ jobs:
               dotnet run --project AzureActivities.Tests/AzureActivities.Tests.csproj -c Release -f $framework
               if ($LASTEXITCODE -ne 0) { throw "Azure checks failed: $framework" }
           }
+
+      - name: Data from PDF bridge checks
+        # A failed Data from PDF step says why, never with the message's content or the PDF reader's text.
+        run: dotnet run --project DataFromPdfActivities.Bridge.Tests/DataFromPdfActivities.Bridge.Tests.csproj -c Release

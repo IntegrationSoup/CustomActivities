@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- The Data from PDF runner's net10.0 form, which is what version 5's Linux image runs. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <StartupObject>DataFromPdfActivities.Bridge.Tests.Checks</StartupObject>
+    <BridgeAdapterSource>$(MSBuildProjectDirectory)/../DataFromPdfActivities</BridgeAdapterSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ExtensionRunnerHosting/*.cs" />
+    <Compile Include="../DataFromPdfActivities.Runner/*.cs" />
+    <PackageReference Include="PdfPig" Version="0.1.14" />
+  </ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>
