@@ -31,14 +31,14 @@ namespace AzureActivities.Runner
         private static async Task<BlobDownloadResponse> ExecuteAsync(BlobDownloadRequest request, CancellationToken cancellation)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.ConnectionString) || string.IsNullOrWhiteSpace(request.ContainerName) || string.IsNullOrEmpty(request.FileName))
-                throw new ArgumentException("Connection String, Container Name and File Name are required.");
+                throw Program.Reason("Connection String, Container Name and File Name are required.");
             if (request.FileName.Length > 1024 || request.ContainerName.Length > 63 || request.ConnectionString.Length > 16384 || request.VersionId?.Length > 256 || request.ExpectedETag?.Length > 256)
-                throw new ArgumentException("A blob identity or connection setting exceeds its supported length.");
+                throw Program.Reason("A blob identity or connection setting exceeds its supported length.");
             // Worst-case control-character text expands in both nested JSON strings.
             // 8 MiB leaves headroom inside the default 64 MiB bridge envelope.
             if (request.MaximumBytes < 1 || request.MaximumBytes > 8 * 1024 * 1024)
-                throw new ArgumentException("The maximum download size must be between 1 byte and 8 MiB.");
-            if (request.ExpectedETag?.Trim() == "*") throw new ArgumentException("Expected ETag must identify a specific blob; wildcard * is not supported.");
+                throw Program.Reason("The maximum download size must be between 1 byte and 8 MiB.");
+            if (request.ExpectedETag?.Trim() == "*") throw Program.Reason("Expected ETag must identify a specific blob; wildcard * is not supported.");
             cancellation.ThrowIfCancellationRequested();
             try
             {
@@ -54,7 +54,7 @@ namespace AzureActivities.Runner
                     var conditions = string.IsNullOrWhiteSpace(request.ExpectedETag) ? null : new BlobRequestConditions { IfMatch = new ETag(request.ExpectedETag) };
                     // Read-only path: no container creation, listing, upload, delete or access-policy calls.
                     BlobProperties properties = (await blob.GetPropertiesAsync(conditions, cancellationToken: cancellation).ConfigureAwait(false)).Value;
-                    if (properties.ContentLength > request.MaximumBytes) throw new InvalidOperationException("The blob exceeds Maximum Download MB.");
+                    if (properties.ContentLength > request.MaximumBytes) throw Program.Reason("The blob exceeds Maximum Download MB.");
                     var response = await blob.DownloadStreamingAsync(new BlobDownloadOptions { Conditions = new BlobRequestConditions { IfMatch = properties.ETag } }, cancellation).ConfigureAwait(false);
                     using (response.GetRawResponse())
                     using (var download = response.Value)
@@ -67,11 +67,11 @@ namespace AzureActivities.Runner
                         while ((count = await download.Content.ReadAsync(buffer, 0, buffer.Length, cancellation).ConfigureAwait(false)) > 0)
                         {
                             cancellation.ThrowIfCancellationRequested();
-                            if (output.Length + count > request.MaximumBytes) throw new InvalidOperationException("The blob exceeds Maximum Download MB.");
+                            if (output.Length + count > request.MaximumBytes) throw Program.Reason("The blob exceeds Maximum Download MB.");
                             output.Write(buffer, 0, count);
                         }
                         cancellation.ThrowIfCancellationRequested();
-                        if (output.Length != properties.ContentLength) throw new InvalidOperationException("The blob download was incomplete.");
+                        if (output.Length != properties.ContentLength) throw Program.Reason("The blob download was incomplete.");
                         return new BlobDownloadResponse
                         {
                             Base64 = Convert.ToBase64String(output.ToArray()),
@@ -86,13 +86,13 @@ namespace AzureActivities.Runner
                 string reason = exception.Status == 404 ? "Blob or container was not found." : exception.Status == 403 ? "Read access was denied. Check the blob read permission and credential expiry."
                     : exception.Status == 412 ? "The blob changed or Expected ETag did not match." : "Azure Blob download failed.";
                 // SDK error bodies may contain signed URLs or resource details.
-                throw new InvalidOperationException(reason + " Azure HTTP status: " + exception.Status + ".");
+                throw Program.Reason(reason + " Azure HTTP status: " + exception.Status + ".");
             }
-            catch (ArgumentException) { throw new InvalidOperationException("Azure Blob download failed. Check the connection string and resource names."); }
-            catch (FormatException) { throw new InvalidOperationException("Azure Blob download failed. Check the connection string and resource names."); }
-            catch (System.Net.Http.HttpRequestException) { throw new InvalidOperationException("Azure Blob download failed. Check the storage connection and network."); }
-            catch (IOException) { throw new InvalidOperationException("Azure Blob download failed. Check the storage connection and network."); }
-            catch (AggregateException) { throw new InvalidOperationException("Azure Blob download failed after interrupted body reads. Check the storage connection and network."); }
+            catch (ArgumentException) { throw Program.Reason("Azure Blob download failed. Check the connection string and resource names."); }
+            catch (FormatException) { throw Program.Reason("Azure Blob download failed. Check the connection string and resource names."); }
+            catch (System.Net.Http.HttpRequestException) { throw Program.Reason("Azure Blob download failed. Check the storage connection and network."); }
+            catch (IOException) { throw Program.Reason("Azure Blob download failed. Check the storage connection and network."); }
+            catch (AggregateException) { throw Program.Reason("Azure Blob download failed after interrupted body reads. Check the storage connection and network."); }
         }
 
         // 12.14.0's WithVersion rebuilds the path with default slash trimming.

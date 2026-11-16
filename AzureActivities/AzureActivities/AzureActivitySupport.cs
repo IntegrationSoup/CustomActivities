@@ -64,7 +64,18 @@ namespace AzureActivities
             string text = message.Text ?? string.Empty;
             if (IsBinaryMessage(message))
             {
+#if EXTENSION_BRIDGE_RUNNER
+                try
+                {
+                    return Convert.FromBase64String(text);
+                }
+                catch (FormatException)
+                {
+                    throw new ExtensionReasonException("The message is Binary, but its text is not Base64, so it cannot be uploaded.");
+                }
+#else
                 return Convert.FromBase64String(text);
+#endif
             }
 
             return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text);
@@ -94,7 +105,11 @@ namespace AzureActivities
                 return preserveWhitespace ? value : value.Trim();
             }
 
+#if EXTENSION_BRIDGE_RUNNER
+            throw new ExtensionReasonException($"The parameter '{name}' is required.");
+#else
             throw new ArgumentException($"Parameter '{name}' is required.");
+#endif
         }
     }
 
@@ -143,6 +158,13 @@ namespace AzureActivities
                     VersionId = response?.VersionId
                 };
             }
+#if EXTENSION_BRIDGE_RUNNER
+            // The runner's own sentences (Program.Reason) pass through unchanged.
+            catch (ExtensionReasonException)
+            {
+                throw;
+            }
+#endif
             catch (Exception ex)
             {
                 throw new InvalidOperationException(

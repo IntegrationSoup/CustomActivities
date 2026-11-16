@@ -10,6 +10,11 @@ namespace AzureActivities.Runner
 {
     internal static class Program
     {
+        // Version 5's extension bridge shows the Host only a sentence the library wrote on purpose. Every sentence given
+        // here is this runner's own, built from the settings and Azure's HTTP status, never from the SDK's text. Version 4's
+        // pipe sends only an exception's message, so what version 4 shows is unchanged.
+        internal static Exception Reason(string sentence) => new HL7Soup.Integrations.ExtensionReasonException(sentence);
+
         internal static Func<string, string, BlobClientOptions, BlobContainerClient> ContainerClientFactory { get; set; }
         private static readonly Dictionary<string, BlobContainerClient> containerClientCache = new Dictionary<string, BlobContainerClient>(StringComparer.Ordinal);
 
@@ -121,26 +126,26 @@ namespace AzureActivities.Runner
             ValidatePipeRequest(request);
             bool createContainer = false;
             if (!string.IsNullOrWhiteSpace(request.CreateContainerIfMissing) && !bool.TryParse(request.CreateContainerIfMissing.Trim(), out createContainer))
-                throw new ArgumentException("Create Container If Missing must be False or True.");
+                throw Program.Reason("Create Container If Missing must be False or True.");
             bool overwrite = false;
             if (!string.IsNullOrWhiteSpace(request.OverwriteExistingBlob) && !bool.TryParse(request.OverwriteExistingBlob.Trim(), out overwrite))
-                throw new ArgumentException("Overwrite Existing Blob must be False or True.");
+                throw Program.Reason("Overwrite Existing Blob must be False or True.");
             if (!overwrite && !string.IsNullOrWhiteSpace(request.ExpectedETag))
-                throw new ArgumentException("Expected ETag requires Overwrite Existing Blob=True.");
-            if (request.ExpectedETag?.Trim() == "*") throw new ArgumentException("Expected ETag must identify a specific blob; wildcard * is not supported.");
+                throw Program.Reason("Expected ETag requires Overwrite Existing Blob=True.");
+            if (request.ExpectedETag?.Trim() == "*") throw Program.Reason("Expected ETag must identify a specific blob; wildcard * is not supported.");
             var access = Azure.Storage.Blobs.Models.PublicAccessType.None;
             if (!string.IsNullOrWhiteSpace(request.NewContainerAccess) && !string.Equals(request.NewContainerAccess.Trim(), "Private", StringComparison.OrdinalIgnoreCase))
             {
                 if (!string.Equals(request.NewContainerAccess.Trim(), "Blob", StringComparison.OrdinalIgnoreCase))
-                    throw new ArgumentException("New Container Access must be Private or Blob.");
+                    throw Program.Reason("New Container Access must be Private or Blob.");
                 access = Azure.Storage.Blobs.Models.PublicAccessType.Blob;
             }
             if (!createContainer && access != Azure.Storage.Blobs.Models.PublicAccessType.None)
-                throw new ArgumentException("Public new-container access requires Create Container If Missing=True.");
+                throw Program.Reason("Public new-container access requires Create Container If Missing=True.");
 
             string containerLower = request.ContainerName.ToLowerInvariant();
             byte[] inputBytes = Convert.FromBase64String(request.InputBase64 ?? string.Empty);
-            if (inputBytes.Length > 8 * 1024 * 1024) throw new InvalidOperationException("Azure Blob Upload supports at most 8 MiB per invocation.");
+            if (inputBytes.Length > 8 * 1024 * 1024) throw Program.Reason("Azure Blob Upload supports at most 8 MiB per invocation.");
 
             try
             {
@@ -174,12 +179,12 @@ namespace AzureActivities.Runner
                     : exception.Status == 404 ? "The container was not found."
                     : exception.Status == 409 || exception.Status == 412 ? "The object or container did not meet the requested write or access conditions."
                     : "Check the storage connection and network.";
-                throw new InvalidOperationException("Azure Blob Upload failed. Azure HTTP status: " + exception.Status + ". " + reason);
+                throw Program.Reason("Azure Blob Upload failed. Azure HTTP status: " + exception.Status + ". " + reason);
             }
-            catch (ArgumentException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the connection string and resource names."); }
-            catch (FormatException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the connection string and resource names."); }
-            catch (System.Net.Http.HttpRequestException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the storage connection and network."); }
-            catch (IOException) { throw new InvalidOperationException("Azure Blob Upload failed. Check the storage connection and network."); }
+            catch (ArgumentException) { throw Program.Reason("Azure Blob Upload failed. Check the connection string and resource names."); }
+            catch (FormatException) { throw Program.Reason("Azure Blob Upload failed. Check the connection string and resource names."); }
+            catch (System.Net.Http.HttpRequestException) { throw Program.Reason("Azure Blob Upload failed. Check the storage connection and network."); }
+            catch (IOException) { throw Program.Reason("Azure Blob Upload failed. Check the storage connection and network."); }
         }
 
         private static BlobContainerClient GetContainerClient(string connectionString, string containerName)
