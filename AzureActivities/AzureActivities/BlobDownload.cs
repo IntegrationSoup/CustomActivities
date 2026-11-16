@@ -31,7 +31,11 @@ namespace AzureActivities
             string limit = Value(parameters, "Maximum Download MB");
             int maximum = 8;
             if (!string.IsNullOrWhiteSpace(limit) && (!int.TryParse(limit, NumberStyles.Integer, CultureInfo.InvariantCulture, out maximum) || maximum < 1 || maximum > 8))
+#if EXTENSION_BRIDGE_RUNNER
+                throw new ExtensionReasonException("Maximum Download MB must be between 1 and 8.");
+#else
                 throw new ArgumentException("Maximum Download MB must be between 1 and 8.");
+#endif
             var request = new BlobDownloadRequest
             {
                 ConnectionString = Required(parameters, "Connection String").Trim(),
@@ -46,10 +50,25 @@ namespace AzureActivities
             object kind = activity.ResponseMessage.GetType().GetProperty("MessageType")?.GetValue(activity.ResponseMessage);
             bool binary = activity.ResponseMessage is IDicomMessage || activity.ResponseMessage.GetType().Name == "BinaryMessage" || string.Equals(kind?.ToString(), "Binary", StringComparison.OrdinalIgnoreCase);
             // Validate text encoding before contacting Azure.
+#if EXTENSION_BRIDGE_RUNNER
+            // Version 5's bridge shows the Host only a sentence the library wrote on purpose; these two are decided by
+            // this library's own calls.
+            string encodingLabel = string.IsNullOrWhiteSpace(encodingName) ? "utf-8" : encodingName.Trim();
+            Encoding encoding;
+            try { encoding = binary ? null : Encoding.GetEncoding(encodingLabel, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback); }
+            catch (ArgumentException) { throw new ExtensionReasonException($"The Text Encoding '{encodingLabel}' is not known."); }
+            BlobDownloadResponse result = AzureActivitySupport.Download(request);
+            byte[] bytes = Convert.FromBase64String(result.Base64);
+            string text;
+            try { text = binary ? result.Base64 : encoding.GetString(bytes); }
+            catch (DecoderFallbackException) { throw new ExtensionReasonException($"The blob is not valid {encoding.WebName} text. Set its Text Encoding, or use a Binary response message."); }
+            activity.ResponseMessage.SetText(text);
+#else
             Encoding encoding = binary ? null : Encoding.GetEncoding(string.IsNullOrWhiteSpace(encodingName) ? "utf-8" : encodingName.Trim(), EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
             BlobDownloadResponse result = AzureActivitySupport.Download(request);
             byte[] bytes = Convert.FromBase64String(result.Base64);
             activity.ResponseMessage.SetText(binary ? result.Base64 : encoding.GetString(bytes));
+#endif
             workflow.SetVariable("AzureBlobMetadataJson", result.MetadataJson);
         }
 
@@ -57,7 +76,11 @@ namespace AzureActivities
         private static string Required(Dictionary<string, string> parameters, string name)
         {
             string value = Value(parameters, name);
+#if EXTENSION_BRIDGE_RUNNER
+            if (name == "File Name" ? string.IsNullOrEmpty(value) : string.IsNullOrWhiteSpace(value)) throw new ExtensionReasonException("The parameter '" + name + "' is required.");
+#else
             if (name == "File Name" ? string.IsNullOrEmpty(value) : string.IsNullOrWhiteSpace(value)) throw new ArgumentException("Parameter '" + name + "' is required.");
+#endif
             return value;
         }
     }

@@ -180,6 +180,7 @@ namespace AzureActivities.Tests
                 Check(!RunFailure("Azure Blob Upload", Params("File Name", "a", "Create Container If Missing", "True", "New Container Access", "Blob")).Success, "account public-access denial fails without upload or permission fallback");
                 Check(!RunFailure("Azure Blob Upload", Params("File Name", "a", "New Container Access", "Blob")).Success, "public creation requires explicit provision option");
                 Check(!RunFailure("Azure Blob Upload", Params("File Name", "a", "Create Container If Missing", "yes")).Success, "invalid provisioning setting rejected before network");
+                Reasons();
                 Check(transport.Pending == 0 && transport.UnexpectedRequests == 0, "all expected requests consumed; no unplanned SDK requests");
                 Console.WriteLine("PASS " + checks + " Azure SDK/bridge checks; fake transport only, no cloud network.");
                 return 0;
@@ -271,6 +272,39 @@ namespace AzureActivities.Tests
             Check(!provider.Dispatch(envelope).Success, "cancelled invocation cannot be replayed with its original identity");
             Download(new byte[] { 1 });
             Check(Run("Azure Blob Download", Params("File Name", "after-cancel")).ResponseMessage.Text == "AQ==", "later invocation has a fresh uncancelled budget");
+        }
+        // A failed step says why (T46): through the bridge the Host receives exactly the library's or runner's own
+        // sentence, never Azure's response body or the SDK's text.
+        private static void Reasons()
+        {
+            void Says(ExtensionResponseEnvelope response, string sentence, string description)
+            {
+                Check(!response.Success && response.ErrorMessage == sentence && !response.PayloadJson.Contains("DO-NOT-ECHO") && !response.PayloadJson.Contains("SYNTHETIC-NOT-A-SECRET"), description);
+            }
+            Says(RunFailure("Azure Blob Download", Params()), "The parameter 'File Name' is required.", "a missing download parameter is named");
+            Says(RunFailure("Azure Blob Upload", new List<ExtensionNamedValue> { new ExtensionNamedValue { Name = "Container Name", Value = "inbox" }, new ExtensionNamedValue { Name = "File Name", Value = "a" } }, 13, "x"),
+                "The parameter 'Connection String' is required.", "a missing upload parameter is named");
+            Says(RunFailure("Azure Blob Download", Params("File Name", "a", "Maximum Download MB", "9")), "Maximum Download MB must be between 1 and 8.", "an out-of-range download limit is named");
+            Says(RunFailure("Azure Blob Download", Params("File Name", "a", "Text Encoding", "not-an-encoding"), 13), "The Text Encoding 'not-an-encoding' is not known.", "an unknown text encoding is named");
+            Download(new byte[] { 0xFF });
+            Says(RunFailure("Azure Blob Download", Params("File Name", "invalid.txt"), 13), "The blob is not valid utf-8 text. Set its Text Encoding, or use a Binary response message.", "a blob that is not valid text is named");
+            foreach (var (status, sentence) in new[] { (404, "Blob or container was not found. Azure HTTP status: 404."), (403, "Read access was denied. Check the blob read permission and credential expiry. Azure HTTP status: 403."),
+                (412, "The blob changed or Expected ETag did not match. Azure HTTP status: 412."), (503, "Azure Blob download failed. Azure HTTP status: 503.") })
+            {
+                transport.Enqueue(r => { }, status, "<Error><Code>Synthetic</Code><Message>DO-NOT-ECHO-SIGNED-SECRET</Message></Error>");
+                Says(RunFailure("Azure Blob Download", Params("File Name", "a")), sentence, "a download refused with status " + status + " is named by the runner, without Azure's body");
+            }
+            transport.Enqueue(r => { }, 200, null, 2 * 1024 * 1024);
+            Says(RunFailure("Azure Blob Download", Params("File Name", "large.bin", "Maximum Download MB", "1")), "The blob exceeds Maximum Download MB.", "a blob over the limit is named");
+            var badCredential = Params("File Name", "a");
+            badCredential.Single(p => p.Name == "Connection String").Value = "invalid";
+            Says(RunFailure("Azure Blob Download", badCredential), "Azure Blob download failed. Check the connection string and resource names.", "a connection string that cannot be read is named, without its text");
+            Says(RunFailure("Azure Blob Upload", Params("File Name", "invalid.bin"), 13, "not base64!", 14), "The message is Binary, but its text is not Base64, so it cannot be uploaded.", "Binary text that is not Base64 is named");
+            Says(RunFailure("Azure Blob Upload", Params("File Name", "a", "Overwrite Existing Blob", "yes")), "Overwrite Existing Blob must be False or True.", "an overwrite setting that is neither is named");
+            transport.Enqueue(r => { }, 412, "<Error><Code>ConditionNotMet</Code><Message>DO-NOT-ECHO-SIGNED-SECRET</Message></Error>");
+            Says(RunFailure("Azure Blob Upload", Params("File Name", "exists")), "Azure Blob Upload failed. Azure HTTP status: 412. The object or container did not meet the requested write or access conditions.", "an existing blob is named by the runner, without Azure's body");
+            transport.Enqueue(r => { }, 403, "<Error><Code>AuthorizationFailure</Code><Message>DO-NOT-ECHO-SIGNED-SECRET</Message></Error>");
+            Says(RunFailure("Azure Blob Upload", Params("File Name", "denied")), "Azure Blob Upload failed. Azure HTTP status: 403. Access was denied. Check write or container-creation permissions.", "a refused upload is named by the runner, without Azure's body");
         }
         private static string Range(CapturedRequest request) => request.Headers.TryGetValue("x-ms-range", out string range) ? range : request.Headers.TryGetValue("Range", out range) ? range : null;
         private static void Upload(string access, bool existing, bool overwrite = false, string etag = null)
