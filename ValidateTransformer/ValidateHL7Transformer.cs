@@ -28,7 +28,7 @@ namespace ValidateTransformer
                 IJsonMessage responseMessage = activityInstance.ResponseMessage as IJsonMessage;
                 if (responseMessage == null)
                 {
-                    throw new Exception("ValidateHL7Transformer requires a JSON response message.");
+                    throw ValidationActivity.Failure("ValidateHL7Transformer requires a JSON response message.");
                 }
 
                 ValidationOutcome outcome = ValidationActivity.Validate(hl7Message, profile);

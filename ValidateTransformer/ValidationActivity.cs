@@ -8,6 +8,17 @@ namespace ValidateTransformer
     {
         internal const string ErrorIfInvalidParameterName = "Error if invalid";
 
+        // Version 5 runs this library through the extension bridge, which shows the Host only a sentence
+        // the library wrote on purpose. Each sentence given here is the library's own, as in version 4.
+        internal static Exception Failure(string sentence)
+        {
+#if EXTENSION_BRIDGE_RUNNER
+            return new ExtensionReasonException(sentence);
+#else
+            return new Exception(sentence);
+#endif
+        }
+
         internal static string GetRequiredProfile(Dictionary<string, string> parameters)
         {
             string profile;
@@ -15,7 +26,7 @@ namespace ValidateTransformer
                 !parameters.TryGetValue("Profile", out profile) ||
                 string.IsNullOrWhiteSpace(profile))
             {
-                throw new Exception("A validation Profile is required.");
+                throw Failure("A validation Profile is required.");
             }
 
             return profile.Trim();
@@ -46,7 +57,7 @@ namespace ValidateTransformer
                     return false;
 
                 default:
-                    throw new Exception(ErrorIfInvalidParameterName + " must be true or false.");
+                    throw Failure(ErrorIfInvalidParameterName + " must be true or false.");
             }
         }
 
@@ -101,7 +112,7 @@ namespace ValidateTransformer
                     out ownedMessage);
             }
 
-            throw new Exception(
+            throw Failure(
                 activityName +
                 " requires an HL7 input message. Bind an HL7 message to the activity or run it from an HL7 receiver.");
         }
@@ -130,7 +141,7 @@ namespace ValidateTransformer
                     parsedMessage.Dispose();
                 }
 
-                throw new Exception(activityName + " could not parse the " + source + " as HL7.");
+                throw Failure(activityName + " could not parse the " + source + " as HL7.");
             }
 
             ownedMessage = parsedMessage;
@@ -139,7 +150,21 @@ namespace ValidateTransformer
 
         internal static ValidationOutcome Validate(IHL7Message hl7Message, string profile)
         {
-            string rawOutcome = ValidationProfileCache.ValidateWithLatestProfile(hl7Message, profile);
+            string rawOutcome;
+#if EXTENSION_BRIDGE_RUNNER
+            try
+            {
+                rawOutcome = ValidationProfileCache.ValidateWithLatestProfile(hl7Message, profile);
+            }
+            catch (Exception exception) when (string.Equals(exception.Message, "No highlighters found for profile " + profile, StringComparison.Ordinal))
+            {
+                // The parser's words for an unknown profile, compared exactly as the profile cache does. Only
+                // the library's own sentence is passed on.
+                throw new ExtensionReasonException("The validation profile '" + profile + "' was not found.");
+            }
+#else
+            rawOutcome = ValidationProfileCache.ValidateWithLatestProfile(hl7Message, profile);
+#endif
             return ValidationOutcomeBuilder.Build(rawOutcome, profile);
         }
 
