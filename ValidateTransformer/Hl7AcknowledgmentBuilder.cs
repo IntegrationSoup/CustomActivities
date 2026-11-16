@@ -14,7 +14,7 @@ namespace ValidateTransformer
             IHL7Segment msh = inboundMessage == null ? null : inboundMessage.GetSegment("MSH");
             if (msh == null || string.IsNullOrWhiteSpace(msh.Text))
             {
-                throw new Exception("Cannot generate an HL7 ACK because the inbound message does not have an MSH segment.");
+                throw ValidationActivity.Failure("Cannot generate an HL7 ACK because the inbound message does not have an MSH segment.");
             }
 
             MshFieldValues mshFields = new MshFieldValues
@@ -41,7 +41,7 @@ namespace ValidateTransformer
         {
             if (string.IsNullOrWhiteSpace(inboundMsh) || inboundMsh.Length < 4 || !inboundMsh.StartsWith("MSH", StringComparison.Ordinal))
             {
-                throw new Exception("Cannot generate an HL7 ACK because the inbound message does not have a valid MSH segment.");
+                throw ValidationActivity.Failure("Cannot generate an HL7 ACK because the inbound message does not have a valid MSH segment.");
             }
 
             outcome = outcome ?? new ValidationOutcome { AcknowledgmentCode = "AA" };

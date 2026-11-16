@@ -68,6 +68,10 @@ jobs:
         # A failed Encrypt or Decrypt Message step says why, never with the key or the message.
         run: dotnet run --project HL7SoupEncryptionActivities.Bridge.Tests/HL7SoupEncryptionActivities.Bridge.Tests.csproj -c Release
 
+      - name: Validate bridge checks
+        # A failed Validate step says why, in the library's own words; the parser's text never passes.
+        run: dotnet run --project ValidateTransformer.Bridge.Tests/ValidateTransformer.Bridge.Tests.csproj -c Release
+
       - name: AWS bridge checks
         # A failed S3 upload says why, never with the keys or the SDK's text. S3 is a local fake: no network and no account.
         run: dotnet run --project AmazonActivities.Bridge.Tests/AmazonActivities.Bridge.Tests.csproj -c Release
