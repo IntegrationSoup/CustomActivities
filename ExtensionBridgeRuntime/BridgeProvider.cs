@@ -86,11 +86,34 @@ namespace Popokey.ExtensionRunners
             catch (Exception ex)
             {
                 var fault = ex as BridgeFault;
-                // Business exception text may contain credentials supplied to an SDK.
-                string message = fault == null ? "Extension execution failed (" + ex.GetType().Name + ")." : fault.Message;
+                // Business exception text may contain credentials supplied to an SDK. Only a
+                // sentence that the library wrote on purpose (ExtensionReasonException) is passed on.
+                string reason = ex is ExtensionReasonException ? CleanReason(ex.Message) : null;
+                string message = fault != null ? fault.Message : reason ?? "Extension execution failed (" + ex.GetType().Name + ").";
                 return new ExtensionResponseEnvelope { RequestId = envelope?.RequestId, Success = false, ErrorMessage = message,
                     PayloadJson = PersistentRunnerJson.Serialize(new ExtensionFailure { Code = fault?.Code ?? "ExecutionFailed", ExecutionState = fault?.State ?? "Unknown", Message = message }) };
             }
+        }
+
+        internal const int ReasonLimit = 300;
+
+        // Control and formatting characters are removed, runs of white space become one space,
+        // and the sentence is cut at ReasonLimit characters with an ellipsis. Empty means masked.
+        internal static string CleanReason(string reason)
+        {
+            var text = new System.Text.StringBuilder();
+            bool space = false;
+            foreach (char c in reason ?? string.Empty)
+            {
+                if (char.IsWhiteSpace(c)) { space = text.Length > 0; continue; }
+                if (char.IsControl(c) || CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.Format) continue;
+                if (space) { text.Append(' '); space = false; }
+                text.Append(c);
+            }
+            if (text.Length == 0) return null;
+            if (text.Length <= ReasonLimit) return text.ToString();
+            int cut = char.IsHighSurrogate(text[ReasonLimit - 1]) ? ReasonLimit - 1 : ReasonLimit;
+            return text.ToString(0, cut).TrimEnd() + "\u2026";
         }
 
         private static T Parse<T>(string json) where T : class
