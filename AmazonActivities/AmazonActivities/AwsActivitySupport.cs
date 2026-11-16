@@ -190,7 +190,7 @@ namespace AmazonActivities
                 case "InvalidAccessKeyId" when service.StatusCode == HttpStatusCode.Forbidden:
                     return "AWS did not recognise the Access Key ID.";
                 case "SignatureDoesNotMatch" when service.StatusCode == HttpStatusCode.Forbidden:
-                    return "AWS refused the Secret Access Key for this Access Key ID.";
+                    return "AWS could not verify the request's signature. Either the Secret Access Key does not match this Access Key ID, or something between this machine and AWS changed the request.";
                 case "AccessDenied" when service.StatusCode == HttpStatusCode.Forbidden:
                     return $"AWS refused access to the S3 bucket '{request.BucketName}' for this Access Key ID.";
                 default:

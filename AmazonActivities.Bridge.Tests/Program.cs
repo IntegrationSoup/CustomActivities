@@ -49,7 +49,7 @@ namespace AmazonActivities.Bridge.Tests
 
                 Named(provider, 404, "NoSuchBucket", $"The S3 bucket '{Bucket}' was not found.");
                 Named(provider, 403, "InvalidAccessKeyId", "AWS did not recognise the Access Key ID.");
-                Named(provider, 403, "SignatureDoesNotMatch", "AWS refused the Secret Access Key for this Access Key ID.");
+                Named(provider, 403, "SignatureDoesNotMatch", "AWS could not verify the request's signature. Either the Secret Access Key does not match this Access Key ID, or something between this machine and AWS changed the request.");
                 Named(provider, 403, "AccessDenied", $"AWS refused access to the S3 bucket '{Bucket}' for this Access Key ID.");
 
                 // Left masked: not in the list, or a listed code with a status that does not fit it.
