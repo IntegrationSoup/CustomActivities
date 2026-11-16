@@ -14,6 +14,10 @@ namespace AmazonActivities.Runner
     {
         private static readonly Dictionary<string, IAmazonS3> s3ClientCache = new Dictionary<string, IAmazonS3>(StringComparer.Ordinal);
 
+        // Test seam: when set, the S3 client talks to this URL (plain HTTP, path-style) instead of AWS,
+        // so the bridge checks can run against a local fake. Null in every real run.
+        internal static string ServiceUrlOverride = null;
+
         private static int Main(string[] args)
         {
             S3UploadResponse response = null;
@@ -127,14 +131,17 @@ namespace AmazonActivities.Runner
 
         private static IAmazonS3 GetS3Client(string region, string accessKeyId, string secretAccessKey)
         {
-            string cacheKey = region + "\n" + accessKeyId + "\n" + secretAccessKey;
+            string serviceUrl = ServiceUrlOverride;
+            string cacheKey = region + "\n" + accessKeyId + "\n" + secretAccessKey + "\n" + serviceUrl;
             lock (s3ClientCache)
             {
                 if (!s3ClientCache.TryGetValue(cacheKey, out IAmazonS3 client))
                 {
                     RegionEndpoint bucketRegion = RegionEndpoint.GetBySystemName(region);
                     var credentials = new Amazon.Runtime.BasicAWSCredentials(accessKeyId, secretAccessKey);
-                    client = new AmazonS3Client(credentials, bucketRegion);
+                    client = serviceUrl == null
+                        ? new AmazonS3Client(credentials, bucketRegion)
+                        : new AmazonS3Client(credentials, new AmazonS3Config { ServiceURL = serviceUrl, ForcePathStyle = true, AuthenticationRegion = bucketRegion.SystemName });
                     s3ClientCache[cacheKey] = client;
                 }
 

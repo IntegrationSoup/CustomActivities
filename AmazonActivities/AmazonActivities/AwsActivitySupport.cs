@@ -1,7 +1,13 @@
+#if EXTENSION_BRIDGE_RUNNER
+using Amazon.Runtime;
+#endif
 using HL7Soup.Integrations;
 using Popokey.ExtensionRunners;
 using System;
 using System.Collections.Generic;
+#if EXTENSION_BRIDGE_RUNNER
+using System.Net;
+#endif
 using System.Runtime.Serialization;
 using System.Text;
 
@@ -99,7 +105,11 @@ namespace AmazonActivities
                 return value.Trim();
             }
 
+#if EXTENSION_BRIDGE_RUNNER
+            throw new ExtensionReasonException($"The parameter '{name}' is required.");
+#else
             throw new ArgumentException($"Parameter '{name}' is required.");
+#endif
         }
     }
 
@@ -141,6 +151,13 @@ namespace AmazonActivities
             }
             catch (Exception ex)
             {
+#if EXTENSION_BRIDGE_RUNNER
+                string reason = DescribeKnownFailure(request, ex);
+                if (reason != null)
+                {
+                    throw new ExtensionReasonException(reason);
+                }
+#endif
                 throw new InvalidOperationException(
                     "The AWS runner process failed. Runner path: "
                     + runnerExecutablePath
@@ -149,6 +166,66 @@ namespace AmazonActivities
                     ex);
             }
         }
+
+#if EXTENSION_BRIDGE_RUNNER
+        // Version 5 runs this library through the extension bridge, which shows the Host only a
+        // sentence the library wrote on purpose. S3's refusals are named here from structured facts
+        // alone (the AWS error code and HTTP status), never from the SDK's or .NET's message text,
+        // and the sentence holds only what the person configured. Anything else stays masked.
+        // PermanentRedirect and AuthorizationHeaderMalformed are left masked on purpose: the SDK
+        // treats them as a sign of the wrong region, but S3 also answers AuthorizationHeaderMalformed
+        // for other malformed credentials, so a region sentence could be wrong.
+        private static string DescribeKnownFailure(S3UploadRequest request, Exception exception)
+        {
+            AmazonServiceException service = FindServiceException(exception, 0);
+            if (service == null)
+            {
+                return null;
+            }
+
+            switch (service.ErrorCode)
+            {
+                case "NoSuchBucket" when service.StatusCode == HttpStatusCode.NotFound:
+                    return $"The S3 bucket '{request.BucketName}' was not found.";
+                case "InvalidAccessKeyId" when service.StatusCode == HttpStatusCode.Forbidden:
+                    return "AWS did not recognise the Access Key ID.";
+                case "SignatureDoesNotMatch" when service.StatusCode == HttpStatusCode.Forbidden:
+                    return "AWS refused the Secret Access Key for this Access Key ID.";
+                case "AccessDenied" when service.StatusCode == HttpStatusCode.Forbidden:
+                    return $"AWS refused access to the S3 bucket '{request.BucketName}' for this Access Key ID.";
+                default:
+                    return null;
+            }
+        }
+
+        // TransferUtility may wrap the SDK's exception, for example in an AggregateException.
+        private static AmazonServiceException FindServiceException(Exception exception, int depth)
+        {
+            if (exception == null || depth > 8)
+            {
+                return null;
+            }
+
+            if (exception is AmazonServiceException service)
+            {
+                return service;
+            }
+
+            if (exception is AggregateException aggregate)
+            {
+                foreach (Exception inner in aggregate.InnerExceptions)
+                {
+                    AmazonServiceException found = FindServiceException(inner, depth + 1);
+                    if (found != null)
+                    {
+                        return found;
+                    }
+                }
+            }
+
+            return FindServiceException(exception.InnerException, depth + 1);
+        }
+#endif
 
         private static string ResolveRunnerExecutablePath()
         {

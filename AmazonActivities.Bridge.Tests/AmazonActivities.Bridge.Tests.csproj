@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- The AWS runner's net10.0 form, which is what version 5's Linux image runs. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <StartupObject>AmazonActivities.Bridge.Tests.Checks</StartupObject>
+    <BridgeAdapterSource>$(MSBuildProjectDirectory)/../AmazonActivities/AmazonActivities</BridgeAdapterSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ExtensionRunnerHosting/*.cs" />
+    <Compile Include="../AmazonActivities.Runner/*.cs" />
+    <PackageReference Include="AWSSDK.Core" Version="3.7.202.5" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.203.11" />
+  </ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>
