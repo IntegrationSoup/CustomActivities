@@ -78,6 +78,17 @@ namespace ZipActivities.Bridge.Tests
             string absent = Path.Combine(root, "absent.zip");
             Check(Fail(provider, id, "Extract ZIP File", Params("ZIP File Path", absent, "Destination Directory", Path.Combine(root, "x"))).ErrorMessage == $"The ZIP file '{absent}' was not found.", "a missing ZIP file is named");
 
+            string folderNamedZip = Path.Combine(root, "folder.zip"); Directory.CreateDirectory(folderNamedZip);
+            Check(Fail(provider, id, "Extract ZIP File", Params("ZIP File Path", folderNamedZip, "Destination Directory", Path.Combine(root, "w"))).ErrorMessage.StartsWith("Extension execution failed ("),
+                "a folder where the ZIP file should be is not called missing; it stays masked");
+            string fileNamedSource = Path.Combine(root, "file-not-folder"); File.WriteAllText(fileNamedSource, "x");
+            Check(Fail(provider, id, "Create ZIP Message", Params("Source Directory", fileNamedSource)).ErrorMessage.StartsWith("Extension execution failed ("),
+                "a file where the source folder should be is not called missing; it stays masked");
+            string deep = Path.Combine(root, "no-parent", "child", "in.zip");
+            Check(Fail(provider, id, "Extract ZIP File", Params("ZIP File Path", deep, "Destination Directory", Path.Combine(root, "v"))).ErrorMessage == $"The ZIP file '{deep}' was not found.",
+                "a ZIP file under a folder that does not exist is named missing");
+            Refused(provider, id, root);
+
             string damaged = Path.Combine(root, "damaged.zip"); File.WriteAllText(damaged, "not a zip");
             Check(Fail(provider, id, "Extract ZIP File", Params("ZIP File Path", damaged, "Destination Directory", Path.Combine(root, "y"))).ErrorMessage == $"The ZIP file '{damaged}' is damaged, or holds an entry that cannot be extracted safely.", "a damaged ZIP file is named, without .NET's own text");
 
@@ -91,6 +102,27 @@ namespace ZipActivities.Bridge.Tests
             Check(Fail(provider, id, "Extract ZIP File", Params("ZIP File Path", zip, "Destination Directory", destination)).ErrorMessage == "Extension execution failed (InvalidOperationException).",
                 "a failure the library does not name for certain (an existing destination file) stays masked");
             Check(Succeed(provider, id, "Extract ZIP File", Params("ZIP File Path", zip, "Destination Directory", destination, "Overwrite Existing Files", "true")), "extraction still works through the bridge");
+        }
+
+        // A folder the runner may not read: its contents must never be called missing. Needs Unix
+        // permissions and an account they bind (not root); elsewhere it says so and counts nothing.
+        private static void Refused(BridgeProvider provider, string id, string root)
+        {
+            string locked = Path.Combine(root, "locked"); Directory.CreateDirectory(locked);
+            string inside = Path.Combine(locked, "in.zip"); File.WriteAllText(inside, "x");
+            if (OperatingSystem.IsWindows()) { Console.WriteLine("NOT RUN: refused-access check (needs Unix permissions)."); return; }
+            File.SetUnixFileMode(locked, UnixFileMode.None);
+            try
+            {
+                bool binds = true;
+                try { Directory.EnumerateFileSystemEntries(locked).GetEnumerator().MoveNext(); binds = false; } catch (UnauthorizedAccessException) { }
+                if (!binds) { Console.WriteLine("NOT RUN: refused-access check (this account is not bound by folder permissions)."); return; }
+                Check(Fail(provider, id, "Extract ZIP File", Params("ZIP File Path", inside, "Destination Directory", Path.Combine(root, "u"))).ErrorMessage.StartsWith("Extension execution failed ("),
+                    "a ZIP file in a folder the runner may not read is not called missing; it stays masked");
+                Check(Fail(provider, id, "Create ZIP Message", Params("Source Directory", Path.Combine(locked, "sub"))).ErrorMessage.StartsWith("Extension execution failed ("),
+                    "a source folder inside a folder the runner may not read is not called missing; it stays masked");
+            }
+            finally { File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
         }
 
         private static ExtensionResponseEnvelope Fail(BridgeProvider provider, string providerId, string name, List<ExtensionNamedValue> values)

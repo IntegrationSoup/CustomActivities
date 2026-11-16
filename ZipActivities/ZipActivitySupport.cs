@@ -165,7 +165,7 @@ namespace ZipActivities
                     RequireSourceDirectory(request.SourceDirectory);
                     break;
                 case "extract-zip-file":
-                    if (!File.Exists(Path.GetFullPath(request.ZipFilePath.Trim())))
+                    if (IsCertainlyAbsent(request.ZipFilePath))
                     {
                         throw new ExtensionReasonException($"The ZIP file '{request.ZipFilePath.Trim()}' was not found.");
                     }
@@ -176,9 +176,45 @@ namespace ZipActivities
 
         private static void RequireSourceDirectory(string sourceDirectory)
         {
-            if (!Directory.Exists(Path.GetFullPath(sourceDirectory.Trim())))
+            if (IsCertainlyAbsent(sourceDirectory))
             {
                 throw new ExtensionReasonException($"The source directory '{sourceDirectory.Trim()}' was not found.");
+            }
+        }
+
+        // File.Exists and Directory.Exists also answer false when access is refused somewhere on
+        // the path. "Not found" is said only when the parent folder can be read and holds nothing
+        // of that name, or the system says a folder on the way does not exist. Anything else,
+        // including refused access or something else of that name, is left to the masked failure.
+        private static bool IsCertainlyAbsent(string path)
+        {
+            string fullPath = Path.GetFullPath(path.Trim());
+            if (File.Exists(fullPath) || Directory.Exists(fullPath))
+            {
+                return false;
+            }
+
+            string parent = Path.GetDirectoryName(fullPath);
+            string name = Path.GetFileName(fullPath);
+            if (string.IsNullOrEmpty(parent) || string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            try
+            {
+                using (IEnumerator<string> entries = Directory.EnumerateFileSystemEntries(parent, name).GetEnumerator())
+                {
+                    return !entries.MoveNext();
+                }
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 
