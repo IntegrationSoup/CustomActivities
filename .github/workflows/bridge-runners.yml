@@ -60,6 +60,10 @@ jobs:
       - name: ZIP runner tests
         run: dotnet test ZipActivities.Runner.Tests/ZipActivities.Runner.Tests.csproj -c Release
 
+      - name: ZIP bridge checks
+        # A failed step says why: only a sentence the library wrote on purpose reaches the Host.
+        run: dotnet run --project ZipActivities.Bridge.Tests/ZipActivities.Bridge.Tests.csproj -c Release
+
       - name: Azure runner checks
         # The real Azure SDK over a synthetic HTTP transport: no network and no account.
         # net10.0 is what a Linux host runs. net48 is what the MSI installs, and runs on Windows only.

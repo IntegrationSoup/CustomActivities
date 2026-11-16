@@ -2,6 +2,7 @@ using HL7Soup.Integrations;
 using Popokey.ExtensionRunners;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.Serialization;
 
 namespace ZipActivities
@@ -29,7 +30,11 @@ namespace ZipActivities
                 return value.Trim();
             }
 
+#if EXTENSION_BRIDGE_RUNNER
+            throw new ExtensionReasonException($"The parameter '{name}' is required.");
+#else
             throw new ArgumentException($"Parameter '{name}' is required.");
+#endif
         }
 
         private protected static bool GetOptionalBoolean(Dictionary<string, string> parameters, string name, bool defaultValue = false)
@@ -54,7 +59,11 @@ namespace ZipActivities
                 case "off":
                     return false;
                 default:
+#if EXTENSION_BRIDGE_RUNNER
+                    throw new ExtensionReasonException($"The parameter '{name}' must be true or false.");
+#else
                     throw new ArgumentException($"Parameter '{name}' must be true or false.");
+#endif
             }
         }
 
@@ -102,14 +111,30 @@ namespace ZipActivities
 
             try
             {
+#if EXTENSION_BRIDGE_RUNNER
+                ExplainKnownFailures(operation, request);
+#endif
                 return runnerClient.Invoke<ZipRequest, ZipResponse>(
                     runnerExecutablePath,
                     operation,
                     request,
                     RunnerTimeoutMilliseconds);
             }
+#if EXTENSION_BRIDGE_RUNNER
+            catch (ExtensionReasonException)
+            {
+                throw;
+            }
+#endif
             catch (Exception ex)
             {
+#if EXTENSION_BRIDGE_RUNNER
+                string reason = DescribeKnownFailure(operation, request, ex);
+                if (reason != null)
+                {
+                    throw new ExtensionReasonException(reason);
+                }
+#endif
                 throw new InvalidOperationException(
                     "The ZIP runner process failed. Runner path: "
                     + runnerExecutablePath
@@ -118,6 +143,101 @@ namespace ZipActivities
                     ex);
             }
         }
+
+#if EXTENSION_BRIDGE_RUNNER
+        // Version 5 runs this library through the extension bridge, which shows the Host only a
+        // sentence the library wrote on purpose. The failures this library knows are named here,
+        // from what the person configured and never from another exception's text.
+        // ZipArchiveOperations keeps every one of its own checks, so nothing is skipped.
+        private static void ExplainKnownFailures(string operation, ZipRequest request)
+        {
+            switch (operation)
+            {
+                case "create-zip-file":
+                    RequireSourceDirectory(request.SourceDirectory);
+                    if (!request.OverwriteExistingFile && File.Exists(Path.GetFullPath(request.ZipFilePath.Trim())))
+                    {
+                        throw new ExtensionReasonException($"The ZIP file '{request.ZipFilePath.Trim()}' already exists. Turn on Overwrite Existing File to replace it.");
+                    }
+
+                    break;
+                case "create-zip-message":
+                    RequireSourceDirectory(request.SourceDirectory);
+                    break;
+                case "extract-zip-file":
+                    if (IsCertainlyAbsent(request.ZipFilePath))
+                    {
+                        throw new ExtensionReasonException($"The ZIP file '{request.ZipFilePath.Trim()}' was not found.");
+                    }
+
+                    break;
+            }
+        }
+
+        private static void RequireSourceDirectory(string sourceDirectory)
+        {
+            if (IsCertainlyAbsent(sourceDirectory))
+            {
+                throw new ExtensionReasonException($"The source directory '{sourceDirectory.Trim()}' was not found.");
+            }
+        }
+
+        // File.Exists and Directory.Exists also answer false when access is refused somewhere on
+        // the path. "Not found" is said only when the parent folder can be read and holds nothing
+        // of that name, or the system says a folder on the way does not exist. Anything else,
+        // including refused access or something else of that name, is left to the masked failure.
+        private static bool IsCertainlyAbsent(string path)
+        {
+            string fullPath = Path.GetFullPath(path.Trim());
+            if (File.Exists(fullPath) || Directory.Exists(fullPath))
+            {
+                return false;
+            }
+
+            string parent = Path.GetDirectoryName(fullPath);
+            string name = Path.GetFileName(fullPath);
+            if (string.IsNullOrEmpty(parent) || string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            try
+            {
+                using (IEnumerator<string> entries = Directory.EnumerateFileSystemEntries(parent, name).GetEnumerator())
+                {
+                    return !entries.MoveNext();
+                }
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Only exception types whose meaning does not depend on who threw them are named.
+        private static string DescribeKnownFailure(string operation, ZipRequest request, Exception exception)
+        {
+            if (exception is UnauthorizedAccessException)
+            {
+                return operation == "extract-zip-file"
+                    ? $"Access was refused while extracting '{request.ZipFilePath.Trim()}' to '{request.DestinationDirectory.Trim()}'."
+                    : operation == "create-zip-file"
+                        ? $"Access was refused while zipping '{request.SourceDirectory.Trim()}' to '{request.ZipFilePath.Trim()}'."
+                        : $"Access was refused while zipping '{request.SourceDirectory.Trim()}'.";
+            }
+
+            if (exception is InvalidDataException && operation == "extract-zip-file")
+            {
+                return $"The ZIP file '{request.ZipFilePath.Trim()}' is damaged, or holds an entry that cannot be extracted safely.";
+            }
+
+            return null;
+        }
+#endif
 
         private static string ResolveRunnerExecutablePath()
         {
