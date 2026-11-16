@@ -64,6 +64,10 @@ jobs:
         # A failed step says why: only a sentence the library wrote on purpose reaches the Host.
         run: dotnet run --project ZipActivities.Bridge.Tests/ZipActivities.Bridge.Tests.csproj -c Release
 
+      - name: Encryption bridge checks
+        # A failed Encrypt or Decrypt Message step says why, never with the key or the message.
+        run: dotnet run --project HL7SoupEncryptionActivities.Bridge.Tests/HL7SoupEncryptionActivities.Bridge.Tests.csproj -c Release
+
       - name: Validate bridge checks
         # A failed Validate step says why, in the library's own words; the parser's text never passes.
         run: dotnet run --project ValidateTransformer.Bridge.Tests/ValidateTransformer.Bridge.Tests.csproj -c Release

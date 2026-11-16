@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- The Encryption runner's net10.0 form, which is what version 5's Linux image runs. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <StartupObject>HL7SoupEncryptionActivities.Bridge.Tests.Checks</StartupObject>
+    <BridgeAdapterSource>$(MSBuildProjectDirectory)/../HL7SoupEncryptionActivities/HL7SoupEncryptionActivities</BridgeAdapterSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ExtensionRunnerHosting/*.cs" />
+    <Compile Include="../HL7SoupEncryptionActivities.Runner/*.cs" />
+  </ItemGroup>
+  <Import Project="../ExtensionBridgeRuntime/ExtensionBridgeRuntime.targets" />
+</Project>
